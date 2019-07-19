@@ -1,6 +1,6 @@
-# rs4se : RealSense for State Estimation
+# rs4se
 
-rs4se stands for RealSense for State Estimation. The goal is to wrap around
+*rs4se* stands for *RealSense for State Estimation*. The goal is to wrap around
 `librealsense2` and provide developers with usable visual and inertial data for
 localization and or mapping.
 
