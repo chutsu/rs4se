@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="rs4se"
+    type="intel_d435i"
+    name="intel_d435i"
+    required="true"
+    output="screen" />
+</launch>
