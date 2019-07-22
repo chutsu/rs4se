@@ -9,7 +9,9 @@ In particular this driver makes the following assertions:
 - Infrared stereo camera timestamps are captured at mid-exposure
 - Laser emitter is switched off
 - Accelerometer measurements are lerped against the gyroscope
-  measurements. To provide "synchronized" `sensor_msgs::Imu` messages.
+  measurements to provide "synchronized" `sensor_msgs::Imu` messages.
+  e.g. If gyroscope is set to 400Hz, the accelerometer will be lerped against
+  the gyroscope to provide 400Hz as well instead of 250Hz.
 
 
 # Install
