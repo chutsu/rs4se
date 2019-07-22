@@ -7,6 +7,7 @@ localization and or mapping.
 In particular this driver makes the following assertions:
 
 - Infrared stereo camera timestamps are captured at mid-exposure
+- Laser emitter is switched off
 - Accelerometer measurements are lerped against the gyroscope
   measurements. To provide "synchronized" `sensor_msgs::Imu` messages.
 
