@@ -38,7 +38,7 @@ rs2::device rs2_connect() {
   return devices[0];
 }
 
-void rs2_list_sensors() {
+void rs2_list_sensors(const int device_idx = 0) {
   // Connect to the device
   rs2::context ctx;
   rs2::device_list devices = ctx.query_devices();
@@ -46,7 +46,7 @@ void rs2_list_sensors() {
   if (devices.size() == 0) {
     FATAL("No device connected, please connect a RealSense device");
   } else {
-    device = devices[0];
+    device = devices[device_idx];  // Default to first device
   }
 
   printf("Sensors:\n");

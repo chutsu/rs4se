@@ -6,44 +6,45 @@ T lerp(const T &a, const T &b, const double t) {
   return a * (1.0 - t) + b * t;
 }
 
-struct lerp_buf_t {
-  std::deque<std::string> buf_dtype;
-  std::deque<double> buf_ts;
-  std::deque<Eigen::Vector3d> buf_data;
+class lerp_buf_t {
+  std::deque<std::string> buf_type_;
+  std::deque<double> buf_ts_;
+  std::deque<Eigen::Vector3d> buf_data_;
 
-  std::deque<double> lerped_gyro_ts;
-  std::deque<Eigen::Vector3d> lerped_gyro_data;
-  std::deque<double> lerped_accel_ts;
-  std::deque<Eigen::Vector3d> lerped_accel_data;
+  std::deque<double> lerped_gyro_ts_;
+  std::deque<Eigen::Vector3d> lerped_gyro_data_;
+  std::deque<double> lerped_accel_ts_;
+  std::deque<Eigen::Vector3d> lerped_accel_data_;
 
+public:
   lerp_buf_t() {}
 
   bool ready() {
-    if (buf_ts.size() >= 3 && buf_dtype.back() == "A") {
+    if (buf_ts_.size() >= 3 && buf_type_.back() == "A") {
       return true;
     }
     return false;
   }
 
   void addAccel(const geometry_msgs::Vector3Stamped &msg) {
-    buf_dtype.push_back("A");
-    buf_ts.push_back(msg.header.stamp.toSec());
-    buf_data.emplace_back(msg.vector.x, msg.vector.y, msg.vector.z);
+    buf_type_.push_back("A");
+    buf_ts_.push_back(msg.header.stamp.toSec());
+    buf_data_.emplace_back(msg.vector.x, msg.vector.y, msg.vector.z);
   }
 
   void addGyro(const geometry_msgs::Vector3Stamped &msg) {
-    if (buf_dtype.size() && buf_dtype.front() == "A") {
-      buf_dtype.push_back("G");
-      buf_ts.push_back(msg.header.stamp.toSec());
-      buf_data.emplace_back(msg.vector.x, msg.vector.y, msg.vector.z);
+    if (buf_type_.size() && buf_type_.front() == "A") {
+      buf_type_.push_back("G");
+      buf_ts_.push_back(msg.header.stamp.toSec());
+      buf_data_.emplace_back(msg.vector.x, msg.vector.y, msg.vector.z);
     }
   }
 
   void print() {
-    for (size_t i = 0; i < buf_ts.size(); i ++) {
-      const double ts = buf_ts.at(i);
-      const std::string dtype = buf_dtype.at(i);
-      const Eigen::Vector3d data = buf_data.at(i);
+    for (size_t i = 0; i < buf_ts_.size(); i ++) {
+      const double ts = buf_ts_.at(i);
+      const std::string dtype = buf_type_.at(i);
+      const Eigen::Vector3d data = buf_data_.at(i);
       const double x = data(0);
       const double y = data(1);
       const double z = data(1);
@@ -66,18 +67,18 @@ struct lerp_buf_t {
     std::string dtype;
     Eigen::Vector3d data;
 
-    while (buf_ts.size()) {
+    while (buf_ts_.size()) {
       // Timestamp
-      ts = buf_ts.front();
-      buf_ts.pop_front();
+      ts = buf_ts_.front();
+      buf_ts_.pop_front();
 
       // Datatype
-      dtype = buf_dtype.front();
-      buf_dtype.pop_front();
+      dtype = buf_type_.front();
+      buf_type_.pop_front();
 
       // Data
-      data = buf_data.front();
-      buf_data.pop_front();
+      data = buf_data_.front();
+      buf_data_.pop_front();
 
       // Lerp
       if (t0_set == false && dtype == "A") {
@@ -95,11 +96,11 @@ struct lerp_buf_t {
           const double dt = t1 - t0;
           const double alpha = (lts - t0) / dt;
 
-          lerped_accel_ts.push_back(lts);
-          lerped_accel_data.push_back(lerp(d0, d1, alpha));
+          lerped_accel_ts_.push_back(lts);
+          lerped_accel_data_.push_back(lerp(d0, d1, alpha));
 
-          lerped_gyro_ts.push_back(lts);
-          lerped_gyro_data.push_back(ldata);
+          lerped_gyro_ts_.push_back(lts);
+          lerped_gyro_data_.push_back(ldata);
 
           lerp_ts.pop_front();
           lerp_data.pop_front();
@@ -114,25 +115,25 @@ struct lerp_buf_t {
       }
     }
 
-    buf_ts.push_back(ts);
-    buf_dtype.push_back(dtype);
-    buf_data.push_back(data);
+    buf_ts_.push_back(ts);
+    buf_type_.push_back(dtype);
+    buf_data_.push_back(data);
   }
 
   void publishIMUMessages(const ros::Publisher &imu_pub) {
-    while (lerped_gyro_ts.size()) {
+    while (lerped_gyro_ts_.size()) {
       // Timestamp
-      const auto ts = lerped_gyro_ts.front();
-      lerped_gyro_ts.pop_front();
-      lerped_accel_ts.pop_front();
+      const auto ts = lerped_gyro_ts_.front();
+      lerped_gyro_ts_.pop_front();
+      lerped_accel_ts_.pop_front();
 
       // Accel
-      const auto accel = lerped_accel_data.front();
-      lerped_accel_data.pop_front();
+      const auto accel = lerped_accel_data_.front();
+      lerped_accel_data_.pop_front();
 
       // Gyro
-      const auto gyro = lerped_gyro_data.front();
-      lerped_gyro_data.pop_front();
+      const auto gyro = lerped_gyro_data_.front();
+      lerped_gyro_data_.pop_front();
 
       // Publish imu messages
       const auto msg = create_imu_msg(ts, gyro, accel);
@@ -140,9 +141,9 @@ struct lerp_buf_t {
     }
 
     // Clear
-    lerped_gyro_ts.clear();
-    lerped_gyro_data.clear();
-    lerped_accel_ts.clear();
-    lerped_accel_data.clear();
+    lerped_gyro_ts_.clear();
+    lerped_gyro_data_.clear();
+    lerped_accel_ts_.clear();
+    lerped_accel_data_.clear();
   }
 };

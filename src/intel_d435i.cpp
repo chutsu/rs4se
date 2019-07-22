@@ -14,8 +14,8 @@
 #include <librealsense2/rs.hpp>
 
 #include "rs.hpp"
-#include "common.hpp"
 #include "lerp.hpp"
+#include "common.hpp"
 
 struct intel_d435i_node_t {
   image_transport::Publisher cam0_pub;
@@ -56,8 +56,8 @@ static void ir_handler(const rs2::frameset &fs,
   cv::Mat frame_right = frame2cvmat(ir_right, width, height);
 
   // Build image messages
-  const auto cam0_msg = create_image_msg(ir_left, "ir_camera_0");
-  const auto cam1_msg = create_image_msg(ir_right, "ir_camera_1");
+  const auto cam0_msg = create_image_msg(ir_left, "camera0");
+  const auto cam1_msg = create_image_msg(ir_right, "camera1");
 
   // Publish image messages
   node.cam0_pub.publish(cam0_msg);
@@ -91,7 +91,7 @@ static void motion_handler(const rs2::frame &f,
   }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   try {
     // ROS
     intel_d435i_node_t node(argc, argv);

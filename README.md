@@ -13,8 +13,8 @@ In particular this driver makes the following assertions:
 
 # Install
 
-This project depends on [librealsense][librealsense].  Install it before the
-following commands:
+This project depends on [librealsense][librealsense].  Install it before
+issuing the following commands:
 
     cd <PATH TO YOUR CATKIN WS>/src
     git clone https://github.com/chutsu/rs4se
