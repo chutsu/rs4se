@@ -21,6 +21,22 @@ issuing the following commands:
     git clone https://github.com/chutsu/rs4se
     catkin build
 
+
+# Run
+
+    source <PATH TO YOUR CATKIN WS>/devel/setup.bash
+    roslaunch rs4se intel_d435i.launch
+
+The above launch file will launch the `intel_d435i` ros node and publish the
+following topics:
+
+    ~/camera0/image  # Infrared camera frames
+    ~/camera1/image  # Infrared camera frames
+    ~/imu0           # "Synchronized" accel and gyro measurements via lerp
+    ~/accel0         # Accelerometer measurements
+    ~/gyro0          # Gyroscope measurements
+
+
 # LICENSE
 
 Copyright (c) <2017> <Chris Choi>. All rights reserved.
