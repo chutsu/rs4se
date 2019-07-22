@@ -9,4 +9,5 @@ source /opt/ros/melodic/setup.bash
 source devel/setup.bash
 # catkin clean
 catkin build rs4se -DCMAKE_BUILD_TYPE=Release -j2
-roslaunch realsense intel_d435i.launch
+# roslaunch rs4se intel_d435i.launch
+rosrun rs4se gui

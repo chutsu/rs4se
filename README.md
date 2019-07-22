@@ -10,6 +10,16 @@ In particular this driver makes the following assertions:
 - Accelerometer measurements are lerped against the gyroscope
   measurements. To provide "synchronized" `sensor_msgs::Imu` messages.
 
+
+# Install
+
+This project depends on [librealsense][librealsense].  Install it before the
+following commands:
+
+    cd <PATH TO YOUR CATKIN WS>/src
+    git clone https://github.com/chutsu/rs4se
+    catkin build
+
 # LICENSE
 
 Copyright (c) <2017> <Chris Choi>. All rights reserved.
@@ -42,3 +52,5 @@ BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
 IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
+
+[librealsense]: https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
