@@ -4,6 +4,9 @@
 #include <deque>
 #include <string>
 
+#include <signal.h>
+#include <unistd.h>
+
 #include <Eigen/Dense>
 
 #include <ros/ros.h>
