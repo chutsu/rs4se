@@ -253,16 +253,6 @@ struct rs_stereo_module_t {
 
     // Sensor options
     sensor_.set_option(RS2_OPTION_EMITTER_ENABLED, 0.0f);
-
-    // const auto exposure_range = sensor_.get_option_range(RS2_OPTION_EXPOSURE);
-    // printf("Exposure:\n");
-    // printf("- min: %f\n", exposure_range.min);
-    // printf("- max: %f\n", exposure_range.max);
-    // printf("- def: %f\n", exposure_range.def);
-    // printf("- step: %f\n", exposure_range.step);
-
-    sensor_.set_option(RS2_OPTION_EXPOSURE, 21000.0f);
-    // sensor_.set_option(RS2_OPTION_GAIN, 0.0f);
   }
 
   rs2::frameset waitForFrame() {

@@ -33,16 +33,14 @@ struct intel_d435i_node_t {
     ros::NodeHandle nh;
 
     // Publishers
-    // -- Image publishers
+    // -- Stereo module
     image_transport::ImageTransport it(nh);
-    cam0_pub = it.advertise("camera0/image", 1);
-    cam1_pub = it.advertise("camera1/image", 1);
-    // -- Gyroscope publisher
-    gyro0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("gyro0", 1);
-    // -- Accelerometer publisher
-    accel0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("accel0", 1);
-    // -- IMU publisher
-    imu0_pub = nh.advertise<sensor_msgs::Imu>("imu0", 1);
+    cam0_pub = it.advertise("stereo/camera0/image", 1);
+    cam1_pub = it.advertise("stereo/camera1/image", 1);
+    // -- Motion module
+    gyro0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("motion/gyro0", 1);
+    accel0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("motion/accel0", 1);
+    imu0_pub = nh.advertise<sensor_msgs::Imu>("motion/imu0", 1);
   }
 };
 
@@ -62,8 +60,8 @@ static void stereo_handler(const rs2::frameset &fs,
   cv::Mat frame_right = frame2cvmat(ir_right, width, height);
 
   // Build image messages
-  const auto cam0_msg = create_image_msg(ir_left, "camera0");
-  const auto cam1_msg = create_image_msg(ir_right, "camera1");
+  const auto cam0_msg = create_image_msg(ir_left, "stereo/camera0");
+  const auto cam1_msg = create_image_msg(ir_right, "stereo/camera1");
 
   // Publish image messages
   node.cam0_pub.publish(cam0_msg);
