@@ -8,20 +8,14 @@
 
 
 static void print_rsframe_timestamps(const rs2::frame &frame) {
-  const auto timestamp = frame.get_timestamp();
-  printf("frame timestamp: %.8f\n", timestamp);
-
+  const auto timestamp = frame.get_timestamp() * 1e-3;
   const auto frame_ts = frame.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
-  printf("metadata frame timestamp [us]: %lld\n", frame_ts);
-  // printf("metadata frame timestamp [s]: %f\n", (frame_ts * 1e-6));
-
   const auto sensor_ts = frame.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
-  printf("metadata sensor timestamp: %lld\n", sensor_ts);
-  // printf("metadata sensor timestamp [s]: %f\n", (sensor_ts * 1e-6));
 
-  // const auto mid_exposure_time_ms = (frame_ts - sensor_ts) / 1000.0;
-  // const auto corrected_timestamp = timestamp - mid_exposure_time_ms;
-  // printf("corrected timestamp: %f\n", corrected_timestamp);
+  printf("frame timestamp [s]: %.8f\n", timestamp);
+  printf("metadata frame timestamp [s]: %.8f\n", frame_ts * 1e-6);
+  printf("metadata sensor timestamp [s]: %.8f\n", sensor_ts * 1e-6);
+  printf("half exposure time [s]: %.8f\n", (frame_ts - sensor_ts) * 1e-6);
 
   switch (frame.get_frame_timestamp_domain()) {
     case RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK:
@@ -32,6 +26,9 @@ static void print_rsframe_timestamps(const rs2::frame &frame) {
       break;
     case RS2_TIMESTAMP_DOMAIN_COUNT:
       printf("Not a valid input!\n");
+      break;
+    default:
+      printf("Not a valid time domain!\n");
       break;
   }
 }
@@ -264,7 +261,7 @@ struct rs_stereo_module_t {
     // printf("- def: %f\n", exposure_range.def);
     // printf("- step: %f\n", exposure_range.step);
 
-    sensor_.set_option(RS2_OPTION_EXPOSURE, 10.0f);
+    sensor_.set_option(RS2_OPTION_EXPOSURE, 21000.0f);
     // sensor_.set_option(RS2_OPTION_GAIN, 0.0f);
   }
 

@@ -32,9 +32,14 @@ static cv::Mat frame2cvmat(const rs2::frame &frame,
 }
 
 static double vframe2ts(const rs2::video_frame &vf) {
-  const auto meta_key = RS2_FRAME_METADATA_SENSOR_TIMESTAMP;
-  const long long ts_us = vf.get_frame_metadata(meta_key);
-  const double ts_s = (double) ts_us * 1e-6;
+  // Calculate half of the exposure time
+  const auto frame_ts_us = vf.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
+  const auto sensor_ts_us = vf.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
+  const auto half_exposure_time_ms = (frame_ts_us - sensor_ts_us) * 1e-3;
+
+  // Calculate corrected timestamp
+  const auto ts_s = (vf.get_timestamp() - half_exposure_time_ms) * 1e-3;
+
   return ts_s;
 }
 

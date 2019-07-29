@@ -1,7 +1,22 @@
 <launch>
+  <group ns="camera0/image" >
+    <rosparam param="disable_pub_plugins">
+      - "image_transport/compressedDepth"
+      - "image_transport/theora"
+    </rosparam>
+  </group>
+
+  <group ns="camera1/image" >
+    <rosparam param="disable_pub_plugins">
+      - "image_transport/compressedDepth"
+      - "image_transport/theora"
+    </rosparam>
+  </group>
+
   <node pkg="rs4se"
-    type="intel_d435i"
-    name="intel_d435i"
-    required="true"
-    output="screen" />
+      type="intel_d435i"
+      name="intel_d435i"
+      required="true"
+      output="screen" >
+  </node>
 </launch>

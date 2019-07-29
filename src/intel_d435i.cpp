@@ -28,8 +28,11 @@ struct intel_d435i_node_t {
   ros::Publisher imu0_pub;
 
   intel_d435i_node_t(int argc, char **argv) {
+    // Setup ros node
     ros::init(argc, argv, argv[0]);
     ros::NodeHandle nh;
+
+    // Publishers
     // -- Image publishers
     image_transport::ImageTransport it(nh);
     cam0_pub = it.advertise("camera0/image", 1);
@@ -43,9 +46,9 @@ struct intel_d435i_node_t {
   }
 };
 
-static void ir_handler(const rs2::frameset &fs,
-                       const intel_d435i_node_t &node,
-                       const bool debug=false) {
+static void stereo_handler(const rs2::frameset &fs,
+                           const intel_d435i_node_t &node,
+                           const bool debug=false) {
   if (fs.size() != 2) {
     return;
   }
@@ -118,7 +121,7 @@ int main(int argc, char **argv) {
     std::thread stereo_thread([&]() {
       while (true) {
         const auto fs = stereo.waitForFrame();
-        ir_handler(fs, node);
+        stereo_handler(fs, node);
       }
     });
 
