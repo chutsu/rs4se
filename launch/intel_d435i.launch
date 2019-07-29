@@ -1,6 +1,7 @@
 <launch>
   <group ns="stereo/camera0/image" >
     <rosparam param="disable_pub_plugins">
+      - "image_transport/compressed"
       - "image_transport/compressedDepth"
       - "image_transport/theora"
     </rosparam>
@@ -8,6 +9,7 @@
 
   <group ns="stereo/camera1/image" >
     <rosparam param="disable_pub_plugins">
+      - "image_transport/compressed"
       - "image_transport/compressedDepth"
       - "image_transport/theora"
     </rosparam>

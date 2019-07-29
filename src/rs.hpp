@@ -145,6 +145,9 @@ struct rs_motion_module_t {
       FATAL("This RealSense device does not have a [Motion Module]");
     }
     setStreamProfiles(accel_hz, gyro_hz);
+
+    // Enable global time
+    sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, 1.0f);
   }
 
   rs2::frame waitForFrame() {
@@ -163,11 +166,11 @@ struct rs_stereo_module_t {
 
   rs_stereo_module_t(const rs2::device &device,
                      const std::string &target_profile="Infrared",
-                     const int target_rate=90,
+                     const int target_rate=30,
                      const std::string &target_format="Y8",
                      const int target_width=640,
                      const int target_height=480,
-                     const int sync_size=20)
+                     const int sync_size=30)
       : device_{device}, sync_{sync_size} {
     setup(target_profile,
           target_rate,
@@ -251,8 +254,11 @@ struct rs_stereo_module_t {
                      target_width,
                      target_height);
 
-    // Sensor options
+    // Switch off laser emitter
     sensor_.set_option(RS2_OPTION_EMITTER_ENABLED, 0.0f);
+
+    // Enable global time
+    sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, 1.0f);
   }
 
   rs2::frameset waitForFrame() {

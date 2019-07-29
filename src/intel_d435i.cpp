@@ -105,6 +105,7 @@ int main(int argc, char **argv) {
     rs2::device device = rs2_connect();
     rs_motion_module_t motion{device};
     rs_stereo_module_t stereo{device};
+    // rs_stereo_module_t stereo{device, "Infrared", 6};
 
     // Process IMU stream
     lerp_buf_t lerp_buf;

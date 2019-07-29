@@ -33,22 +33,24 @@ int test_rs2_motion_module() {
 
 int test_rs2_stereo_module() {
   rs2::device device = rs2_connect();
-  rs_stereo_module_t stereo{device};
+  rs_stereo_module_t stereo{device, "Infrared", 6};
 
-  // while (true) {
-  for (int i = 0; i < 10; i++) {
-    const auto fs = stereo.waitForFrame();
-    for (const auto &frame : fs) {
-      print_rsframe_timestamps(frame);
-      const auto vf = frame.as<rs2::video_frame>();
-      printf("corrected timestamp: %.8f\n", vframe2ts(vf));
-      printf("\n");
+  stereo.listStreamProfiles();
 
-      // ros::Time t;
-      // t.fromSec(vframe2ts(vf));
-      // std::cout << t << std::endl;
-    }
-  }
+  // // while (true) {
+  // for (int i = 0; i < 10; i++) {
+  //   const auto fs = stereo.waitForFrame();
+  //   for (const auto &frame : fs) {
+  //     print_rsframe_timestamps(frame);
+  //     const auto vf = frame.as<rs2::video_frame>();
+  //     printf("corrected timestamp: %.8f\n", vframe2ts(vf));
+  //     printf("\n");
+  //
+  //     // ros::Time t;
+  //     // t.fromSec(vframe2ts(vf));
+  //     // std::cout << t << std::endl;
+  //   }
+  // }
 
   return 0;
 }
