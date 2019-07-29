@@ -1,24 +1,24 @@
 #include <chrono>
-#include <mutex>
-#include <thread>
 #include <deque>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include <signal.h>
 #include <unistd.h>
 
 #include <Eigen/Dense>
 
-#include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <image_transport/image_transport.h>
+#include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
 
 #include <librealsense2/rs.hpp>
 
-#include "rs.hpp"
-#include "lerp.hpp"
 #include "common.hpp"
+#include "lerp.hpp"
+#include "rs.hpp"
 
 struct intel_d435i_node_t {
   image_transport::Publisher cam0_pub;
@@ -39,14 +39,15 @@ struct intel_d435i_node_t {
     cam1_pub = it.advertise("stereo/camera1/image", 1);
     // -- Motion module
     gyro0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("motion/gyro0", 1);
-    accel0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("motion/accel0", 1);
+    accel0_pub =
+        nh.advertise<geometry_msgs::Vector3Stamped>("motion/accel0", 1);
     imu0_pub = nh.advertise<sensor_msgs::Imu>("motion/imu0", 1);
   }
 };
 
 static void stereo_handler(const rs2::frameset &fs,
                            const intel_d435i_node_t &node,
-                           const bool debug=false) {
+                           const bool debug = false) {
   if (fs.size() != 2) {
     return;
   }
@@ -73,8 +74,7 @@ static void stereo_handler(const rs2::frameset &fs,
   }
 }
 
-static void motion_handler(const rs2::frame &f,
-                           const intel_d435i_node_t &node,
+static void motion_handler(const rs2::frame &f, const intel_d435i_node_t &node,
                            lerp_buf_t &lerp_buf) {
   const auto mf = f.as<rs2::motion_frame>();
 
@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
     motion_thread.join();
     stereo_thread.join();
 
-  } catch (const rs2::error& e) {
+  } catch (const rs2::error &e) {
     FATAL("[RealSense Exception]: %s", e.what());
   }
 

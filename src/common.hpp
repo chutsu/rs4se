@@ -5,50 +5,73 @@
 #include <librealsense2/rs.hpp>
 #include <opencv2/opencv.hpp>
 
-#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
 
 #define __FILENAME__                                                           \
   (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #define FATAL(M, ...)                                                          \
-  fprintf(stdout,                                                              \
-          "\033[31m[FATAL] [%s:%d] " M "\033[0m\n",                            \
-          __FILENAME__,                                                        \
-          __LINE__,                                                            \
-          ##__VA_ARGS__);                                                      \
+  fprintf(stdout, "\033[31m[FATAL] [%s:%d] " M "\033[0m\n", __FILENAME__,      \
+          __LINE__, ##__VA_ARGS__);                                            \
   exit(-1)
 
-static cv::Mat frame2cvmat(const rs2::frame &frame,
-                           const int width,
+static inline uint64_t str2ts(const std::string &s) {
+  uint64_t ts = 0;
+  size_t end = s.length() - 1;
+
+  int idx = 0;
+  for (int i = 0; i <= end; i++) {
+    const char c = s.at(end - i);
+
+    if (c != '.') {
+      const uint64_t base = static_cast<uint64_t>(pow(10, idx));
+      ts += std::atoi(&c) * base;
+      idx++;
+    }
+  }
+
+  return ts;
+}
+
+static cv::Mat frame2cvmat(const rs2::frame &frame, const int width,
                            const int height) {
   const cv::Size size(width, height);
   const auto format = CV_8UC1;
   const auto stride = cv::Mat::AUTO_STEP;
-  const cv::Mat cv_frame(size, format, (void*)frame.get_data(), stride);
+  const cv::Mat cv_frame(size, format, (void *)frame.get_data(), stride);
   return cv_frame;
 }
 
-static double vframe2ts(const rs2::video_frame &vf) {
+static uint64_t vframe2ts(const rs2::video_frame &vf) {
   // Calculate half of the exposure time
-  const auto frame_ts_us = vf.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
-  const auto sensor_ts_us = vf.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
-  const auto half_exposure_time_ms = (frame_ts_us - sensor_ts_us) * 1e-3;
+  // -- Frame metadata timestamp
+  const auto frame_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
+  const auto frame_ts_us = vf.get_frame_metadata(frame_meta_key);
+  const auto frame_ts_ns = static_cast<uint64_t>(frame_ts_us) * 1000;
+  // -- Sensor metadata timestamp
+  const auto sensor_meta_key = RS2_FRAME_METADATA_SENSOR_TIMESTAMP;
+  const auto sensor_ts_us = vf.get_frame_metadata(sensor_meta_key);
+  const auto sensor_ts_ns = static_cast<uint64_t>(sensor_ts_us) * 1000;
+  // -- Half exposure time
+  const auto half_exposure_time_ns = frame_ts_ns - sensor_ts_ns;
 
   // Calculate corrected timestamp
-  const auto ts_s = (vf.get_timestamp() - half_exposure_time_ms) * 1e-3;
+  const auto ts_ms = vf.get_timestamp();
+  const auto ts_ns = str2ts(std::to_string(ts_ms));
+  const auto ts_corrected_ns = ts_ns - half_exposure_time_ns;
 
-  return ts_s;
+  return static_cast<uint64_t>(ts_corrected_ns);
 }
 
 static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
                                               const std::string &frame_id) {
   // Form msg stamp
-  const double ts_s = vframe2ts(vf);
+  const uint64_t ts_ns = vframe2ts(vf);
   ros::Time msg_stamp;
-  msg_stamp.fromSec(ts_s);
+  msg_stamp.fromNSec(ts_ns);
 
   // Form msg header
   std_msgs::Header header;
@@ -64,9 +87,8 @@ static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
   return msg;
 }
 
-static geometry_msgs::Vector3Stamped create_vec3_msg(
-      const rs2::motion_frame &f,
-      const std::string &frame_id) {
+static geometry_msgs::Vector3Stamped
+create_vec3_msg(const rs2::motion_frame &f, const std::string &frame_id) {
   // Form msg stamp
   double ts_s = f.get_timestamp() * 1e-3;
   ros::Time stamp;
@@ -106,7 +128,8 @@ static sensor_msgs::Imu create_imu_msg(const double ts,
   return msg;
 }
 
-static void debug_imshow(const cv::Mat &frame_left, const cv::Mat &frame_right) {
+static void debug_imshow(const cv::Mat &frame_left,
+                         const cv::Mat &frame_right) {
   // Display in a GUI
   cv::Mat frame;
   cv::hconcat(frame_left, frame_right, frame);

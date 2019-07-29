@@ -6,31 +6,32 @@
 
 #include "common.hpp"
 
-
 static void print_rsframe_timestamps(const rs2::frame &frame) {
-  const auto timestamp = frame.get_timestamp() * 1e-3;
-  const auto frame_ts = frame.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
-  const auto sensor_ts = frame.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
+  const auto ts_ms = frame.get_timestamp();
+  const auto frame_ts_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
+  const auto frame_ts_us = frame.get_frame_metadata(frame_ts_meta_key);
+  const auto sensor_ts_meta_key = RS2_FRAME_METADATA_SENSOR_TIMESTAMP;
+  const auto sensor_ts_us = frame.get_frame_metadata(sensor_ts_meta_key);
 
-  printf("frame timestamp [s]: %.8f\n", timestamp);
-  printf("metadata frame timestamp [s]: %.8f\n", frame_ts * 1e-6);
-  printf("metadata sensor timestamp [s]: %.8f\n", sensor_ts * 1e-6);
-  printf("half exposure time [s]: %.8f\n", (frame_ts - sensor_ts) * 1e-6);
+  printf("metadata frame timestamp [s]: %.6f\n", frame_ts_us * 1e-6);
+  printf("metadata frame timestamp [us]: %lld\n", frame_ts_us);
+  printf("metadata sensor timestamp [s]: %.6f\n", sensor_ts_us * 1e-6);
+  printf("metadata sensor timestamp [us]: %lld\n", sensor_ts_us);
 
-  switch (frame.get_frame_timestamp_domain()) {
-    case RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK:
-      printf("timestamp domain: hardware clock!\n");
-      break;
-    case RS2_TIMESTAMP_DOMAIN_SYSTEM_TIME:
-      printf("timestamp domain: system time!\n");
-      break;
-    case RS2_TIMESTAMP_DOMAIN_COUNT:
-      printf("Not a valid input!\n");
-      break;
-    default:
-      printf("Not a valid time domain!\n");
-      break;
-  }
+  // switch (frame.get_frame_timestamp_domain()) {
+  // case RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK:
+  //   printf("timestamp domain: hardware clock!\n");
+  //   break;
+  // case RS2_TIMESTAMP_DOMAIN_SYSTEM_TIME:
+  //   printf("timestamp domain: system time!\n");
+  //   break;
+  // case RS2_TIMESTAMP_DOMAIN_COUNT:
+  //   printf("Not a valid input!\n");
+  //   break;
+  // default:
+  //   printf("Not a valid time domain!\n");
+  //   break;
+  // }
 }
 
 rs2::device rs2_connect() {
@@ -52,7 +53,7 @@ void rs2_list_sensors(const int device_idx = 0) {
   if (devices.size() == 0) {
     FATAL("No device connected, please connect a RealSense device");
   } else {
-    device = devices[device_idx];  // Default to first device
+    device = devices[device_idx]; // Default to first device
   }
 
   printf("Sensors:\n");
@@ -62,8 +63,7 @@ void rs2_list_sensors(const int device_idx = 0) {
   }
 }
 
-int rs2_get_sensors(const rs2::device &device,
-                    const std::string &target,
+int rs2_get_sensors(const rs2::device &device, const std::string &target,
                     rs2::sensor &sensor) {
   for (const auto &query_sensor : device.query_sensors()) {
     const auto sensor_name = query_sensor.get_info(RS2_CAMERA_INFO_NAME);
@@ -83,10 +83,8 @@ struct rs_motion_module_t {
   rs2::stream_profile accel_profile_;
   rs2::stream_profile gyro_profile_;
 
-  rs_motion_module_t(const rs2::device &device,
-                     const int accel_hz=250,
-                     const int gyro_hz=400,
-                     const unsigned int fq_size=10)
+  rs_motion_module_t(const rs2::device &device, const int accel_hz = 250,
+                     const int gyro_hz = 400, const unsigned int fq_size = 10)
       : device_{device}, fq_{fq_size} {
     setup(accel_hz, gyro_hz);
     sensor_.open({accel_profile_, gyro_profile_});
@@ -140,7 +138,7 @@ struct rs_motion_module_t {
     }
   }
 
-  void setup(const int accel_hz=250, const int gyro_hz=400) {
+  void setup(const int accel_hz = 250, const int gyro_hz = 400) {
     if (rs2_get_sensors(device_, "Motion Module", sensor_) != 0) {
       FATAL("This RealSense device does not have a [Motion Module]");
     }
@@ -150,9 +148,7 @@ struct rs_motion_module_t {
     sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, 1.0f);
   }
 
-  rs2::frame waitForFrame() {
-    return fq_.wait_for_frame();
-  }
+  rs2::frame waitForFrame() { return fq_.wait_for_frame(); }
 };
 
 struct rs_stereo_module_t {
@@ -165,17 +161,13 @@ struct rs_stereo_module_t {
   bool profile2_set_ = false;
 
   rs_stereo_module_t(const rs2::device &device,
-                     const std::string &target_profile="Infrared",
-                     const int target_rate=30,
-                     const std::string &target_format="Y8",
-                     const int target_width=640,
-                     const int target_height=480,
-                     const int sync_size=30)
+                     const std::string &target_profile = "Infrared",
+                     const int target_rate = 30,
+                     const std::string &target_format = "Y8",
+                     const int target_width = 640,
+                     const int target_height = 480, const int sync_size = 30)
       : device_{device}, sync_{sync_size} {
-    setup(target_profile,
-          target_rate,
-          target_format,
-          target_width,
+    setup(target_profile, target_rate, target_format, target_width,
           target_height);
     sensor_.open({profile1_, profile2_});
     sensor_.start(sync_);
@@ -195,20 +187,14 @@ struct rs_stereo_module_t {
       const auto stream_rate = stream_profile.fps();
       const auto format = rs2_format_to_string(stream_profile.format());
       const auto vp = stream_profile.as<rs2::video_stream_profile>();
-      printf("- %s [%d hz] [%s] [%dx%d] \n",
-             stream_name.c_str(),
-             stream_rate,
-             format,
-             vp.width(),
-             vp.height());
+      printf("- %s [%d hz] [%s] [%dx%d] \n", stream_name.c_str(), stream_rate,
+             format, vp.width(), vp.height());
     }
   }
 
   void setStreamProfile(const std::string &target_profile,
-                        const int target_rate,
-                        const std::string &target_format,
-                        const int target_width,
-                        const int target_height) {
+                        const int target_rate, const std::string &target_format,
+                        const int target_width, const int target_height) {
     const auto stream_profiles = sensor_.get_stream_profiles();
     for (const auto &stream_profile : stream_profiles) {
       const auto name = stream_profile.stream_name();
@@ -240,18 +226,13 @@ struct rs_stereo_module_t {
     }
   }
 
-  void setup(const std::string &target_profile,
-             const int target_rate,
-             const std::string &target_format,
-             const int target_width,
+  void setup(const std::string &target_profile, const int target_rate,
+             const std::string &target_format, const int target_width,
              const int target_height) {
     if (rs2_get_sensors(device_, "Stereo Module", sensor_) != 0) {
       FATAL("This RealSense device does not have a [Stereo Module]");
     }
-    setStreamProfile(target_profile,
-                     target_rate,
-                     target_format,
-                     target_width,
+    setStreamProfile(target_profile, target_rate, target_format, target_width,
                      target_height);
 
     // Switch off laser emitter
@@ -261,7 +242,5 @@ struct rs_stereo_module_t {
     sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, 1.0f);
   }
 
-  rs2::frameset waitForFrame() {
-    return sync_.wait_for_frames();
-  }
+  rs2::frameset waitForFrame() { return sync_.wait_for_frames(10000); }
 };
