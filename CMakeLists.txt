@@ -29,3 +29,6 @@ SET(DEPS
 
 ADD_EXECUTABLE(intel_d435i src/intel_d435i.cpp)
 TARGET_LINK_LIBRARIES(intel_d435i ${DEPS})
+
+ADD_EXECUTABLE(test_rs src/test_rs.cpp)
+TARGET_LINK_LIBRARIES(test_rs ${DEPS})

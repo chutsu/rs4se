@@ -8,11 +8,20 @@
 
 
 static void print_rsframe_timestamps(const rs2::frame &frame) {
-  printf("frame timestamp: %.8f\n", frame.get_timestamp());
+  const auto timestamp = frame.get_timestamp();
+  printf("frame timestamp: %.8f\n", timestamp);
+
   const auto frame_ts = frame.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
-  printf("metadata frame timestamp: %lld\n", frame_ts);
+  printf("metadata frame timestamp [us]: %lld\n", frame_ts);
+  // printf("metadata frame timestamp [s]: %f\n", (frame_ts * 1e-6));
+
   const auto sensor_ts = frame.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
   printf("metadata sensor timestamp: %lld\n", sensor_ts);
+  // printf("metadata sensor timestamp [s]: %f\n", (sensor_ts * 1e-6));
+
+  // const auto mid_exposure_time_ms = (frame_ts - sensor_ts) / 1000.0;
+  // const auto corrected_timestamp = timestamp - mid_exposure_time_ms;
+  // printf("corrected timestamp: %f\n", corrected_timestamp);
 
   switch (frame.get_frame_timestamp_domain()) {
     case RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK:
@@ -100,6 +109,7 @@ struct rs_motion_module_t {
       const auto stream_name = stream_profile.stream_name();
       const auto stream_rate = stream_profile.fps();
       std::cout << " - " << stream_name << " " << stream_rate << " hz ";
+      std::cout << std::endl;
     }
   }
 
