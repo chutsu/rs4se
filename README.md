@@ -32,11 +32,11 @@ issuing the following commands:
 The above launch file will launch the `intel_d435i` ros node and publish the
 following topics:
 
-    ~/camera0/image  # Infrared camera frames
-    ~/camera1/image  # Infrared camera frames
-    ~/imu0           # "Synchronized" accel and gyro measurements via lerp
-    ~/accel0         # Accelerometer measurements
-    ~/gyro0          # Gyroscope measurements
+    ~/stereo/camera0/image  # Infrared camera frames
+    ~/stereo/camera1/image  # Infrared camera frames
+    ~/motion/imu0           # "Synchronized" accel and gyro data via lerp
+    ~/motion/accel0         # Accelerometer measurements
+    ~/motion/gyro0          # Gyroscope measurements
 
 
 # LICENSE
