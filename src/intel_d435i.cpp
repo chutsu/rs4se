@@ -20,6 +20,9 @@
 #include "lerp.hpp"
 #include "rs.hpp"
 
+#define Vector3StampedMsg geometry_msgs::Vector3Stamped
+#define ImuMsg sensor_msgs::Imu
+
 struct intel_d435i_node_t {
   image_transport::Publisher cam0_pub;
   image_transport::Publisher cam1_pub;
@@ -27,10 +30,37 @@ struct intel_d435i_node_t {
   ros::Publisher accel0_pub;
   ros::Publisher imu0_pub;
 
+  bool global_time;
+
+  rs_stereo_module_config_t stereo_config;
+  rs_motion_module_config_t motion_config;
+
   intel_d435i_node_t(int argc, char **argv) {
+    // Parse args
+    std::string node_name;
+    for (int i = 1; i < argc; i++) {
+      std::string arg(argv[i]);
+
+      // ros node name
+      if (arg.find("__name:=") != std::string::npos) {
+        node_name = arg.substr(8);
+      }
+    }
+
     // Setup ros node
     ros::init(argc, argv, argv[0]);
     ros::NodeHandle nh;
+
+    // ROS params
+    const std::string ns = "stereo";
+    ROS_GET_PARAM(ns + "/global_time", global_time);
+    ROS_GET_PARAM(ns + "/sync_size", stereo_config.sync_size);
+    ROS_GET_PARAM(ns + "/enable_emitter", stereo_config.enable_emitter);
+    ROS_GET_PARAM(ns + "/frame_rate", stereo_config.frame_rate);
+    ROS_GET_PARAM(ns + "/format", stereo_config.format);
+    ROS_GET_PARAM(ns + "/width", stereo_config.width);
+    ROS_GET_PARAM(ns + "/height", stereo_config.height);
+    ROS_GET_PARAM(ns + "/exposure", stereo_config.exposure);
 
     // Publishers
     // -- Stereo module
@@ -38,10 +68,9 @@ struct intel_d435i_node_t {
     cam0_pub = it.advertise("stereo/camera0/image", 1);
     cam1_pub = it.advertise("stereo/camera1/image", 1);
     // -- Motion module
-    gyro0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("motion/gyro0", 1);
-    accel0_pub =
-        nh.advertise<geometry_msgs::Vector3Stamped>("motion/accel0", 1);
-    imu0_pub = nh.advertise<sensor_msgs::Imu>("motion/imu0", 1);
+    gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
+    accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
+    imu0_pub = nh.advertise<ImuMsg>("motion/imu0", 1);
   }
 };
 
@@ -103,9 +132,8 @@ int main(int argc, char **argv) {
     // Setup RealSense sensor
     rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
     rs2::device device = rs2_connect();
-    rs_motion_module_t motion{device};
-    rs_stereo_module_t stereo{device};
-    // rs_stereo_module_t stereo{device, "Infrared", 6};
+    rs_motion_module_t motion{device, node.motion_config};
+    rs_stereo_module_t stereo{device, node.stereo_config};
 
     // Process IMU stream
     lerp_buf_t lerp_buf;

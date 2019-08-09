@@ -20,7 +20,7 @@
     <param name="sync_size" type="int" value="30" />
     <param name="enable_emitter" type="bool" value="false" />
 
-    <param name="frame_rate" type="int" value="30" />
+    <param name="frame_rate" type="int" value="6" />
     <param name="format" type="str" value="Y8" />
     <param name="width" type="int" value="640" />
     <param name="height" type="int" value="480" />

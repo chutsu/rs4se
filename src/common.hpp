@@ -18,6 +18,17 @@
           __LINE__, ##__VA_ARGS__);                                            \
   exit(-1)
 
+#define ROS_GET_PARAM(X, Y)                                                    \
+  if (nh.getParam(X, Y) == false) {                                            \
+    std::cerr << "Failed to get ROS param [" << X << "]!" << std::endl;        \
+    exit(-1);                                                                  \
+  }
+
+#define ROS_GET_OPTIONAL_PARAM(X, Y, DEFAULT_VALUE)                            \
+  if (nh.getParam(X, Y) == false) {                                            \
+    Y = DEFAULT_VALUE;                                                         \
+  }
+
 static inline uint64_t str2ts(const std::string &s) {
   uint64_t ts = 0;
   size_t end = s.length() - 1;

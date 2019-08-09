@@ -33,7 +33,7 @@ int test_rs2_motion_module() {
 
 int test_rs2_stereo_module() {
   rs2::device device = rs2_connect();
-  rs_stereo_module_t stereo{device, "Infrared", 6};
+  rs_stereo_module_t stereo{device};
 
   stereo.listStreamProfiles();
 
@@ -74,7 +74,7 @@ int test_ts_correction() {
 
 int test_vframe2ts() {
   rs2::device device = rs2_connect();
-  rs_stereo_module_t stereo{device, "Infrared", 6};
+  rs_stereo_module_t stereo{device};
 
   const auto fs = stereo.waitForFrame();
   const auto frame = fs[0];
