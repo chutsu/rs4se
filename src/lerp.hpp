@@ -1,8 +1,7 @@
 #pragma once
 #include "common.hpp"
 
-template <typename T>
-T lerp(const T &a, const T &b, const double t) {
+template <typename T> T lerp(const T &a, const T &b, const double t) {
   return a * (1.0 - t) + b * t;
 }
 
@@ -41,14 +40,15 @@ public:
   }
 
   void print() {
-    for (size_t i = 0; i < buf_ts_.size(); i ++) {
+    for (size_t i = 0; i < buf_ts_.size(); i++) {
       const double ts = buf_ts_.at(i);
       const std::string dtype = buf_type_.at(i);
       const Eigen::Vector3d data = buf_data_.at(i);
       const double x = data(0);
       const double y = data(1);
       const double z = data(1);
-      printf("[%.6f] - [%s] - (%.2f, %.2f, %.2f)\n", ts, dtype.c_str(), x, y, z);
+      printf("[%.6f] - [%s] - (%.2f, %.2f, %.2f)\n", ts, dtype.c_str(), x, y,
+             z);
     }
   }
 

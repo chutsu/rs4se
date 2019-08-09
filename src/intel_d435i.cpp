@@ -1,24 +1,27 @@
 #include <chrono>
-#include <mutex>
-#include <thread>
 #include <deque>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include <signal.h>
 #include <unistd.h>
 
 #include <Eigen/Dense>
 
-#include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <image_transport/image_transport.h>
+#include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
 
 #include <librealsense2/rs.hpp>
 
-#include "rs.hpp"
-#include "lerp.hpp"
 #include "common.hpp"
+#include "lerp.hpp"
+#include "rs.hpp"
+
+#define Vector3StampedMsg geometry_msgs::Vector3Stamped
+#define ImuMsg sensor_msgs::Imu
 
 struct intel_d435i_node_t {
   image_transport::Publisher cam0_pub;
@@ -27,25 +30,53 @@ struct intel_d435i_node_t {
   ros::Publisher accel0_pub;
   ros::Publisher imu0_pub;
 
+  bool global_time;
+
+  rs_stereo_module_config_t stereo_config;
+  rs_motion_module_config_t motion_config;
+
   intel_d435i_node_t(int argc, char **argv) {
+    // Parse args
+    std::string node_name;
+    for (int i = 1; i < argc; i++) {
+      std::string arg(argv[i]);
+
+      // ros node name
+      if (arg.find("__name:=") != std::string::npos) {
+        node_name = arg.substr(8);
+      }
+    }
+
+    // Setup ros node
     ros::init(argc, argv, argv[0]);
     ros::NodeHandle nh;
-    // -- Image publishers
+
+    // ROS params
+    const std::string ns = "stereo";
+    ROS_GET_PARAM(ns + "/global_time", global_time);
+    ROS_GET_PARAM(ns + "/sync_size", stereo_config.sync_size);
+    ROS_GET_PARAM(ns + "/enable_emitter", stereo_config.enable_emitter);
+    ROS_GET_PARAM(ns + "/frame_rate", stereo_config.frame_rate);
+    ROS_GET_PARAM(ns + "/format", stereo_config.format);
+    ROS_GET_PARAM(ns + "/width", stereo_config.width);
+    ROS_GET_PARAM(ns + "/height", stereo_config.height);
+    ROS_GET_PARAM(ns + "/exposure", stereo_config.exposure);
+
+    // Publishers
+    // -- Stereo module
     image_transport::ImageTransport it(nh);
-    cam0_pub = it.advertise("camera0/image", 1);
-    cam1_pub = it.advertise("camera1/image", 1);
-    // -- Gyroscope publisher
-    gyro0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("gyro0", 1);
-    // -- Accelerometer publisher
-    accel0_pub = nh.advertise<geometry_msgs::Vector3Stamped>("accel0", 1);
-    // -- IMU publisher
-    imu0_pub = nh.advertise<sensor_msgs::Imu>("imu0", 1);
+    cam0_pub = it.advertise("stereo/camera0/image", 1);
+    cam1_pub = it.advertise("stereo/camera1/image", 1);
+    // -- Motion module
+    gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
+    accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
+    imu0_pub = nh.advertise<ImuMsg>("motion/imu0", 1);
   }
 };
 
-static void ir_handler(const rs2::frameset &fs,
-                       const intel_d435i_node_t &node,
-                       const bool debug=false) {
+static void stereo_handler(const rs2::frameset &fs,
+                           const intel_d435i_node_t &node,
+                           const bool debug = false) {
   if (fs.size() != 2) {
     return;
   }
@@ -59,8 +90,8 @@ static void ir_handler(const rs2::frameset &fs,
   cv::Mat frame_right = frame2cvmat(ir_right, width, height);
 
   // Build image messages
-  const auto cam0_msg = create_image_msg(ir_left, "camera0");
-  const auto cam1_msg = create_image_msg(ir_right, "camera1");
+  const auto cam0_msg = create_image_msg(ir_left, "stereo/camera0");
+  const auto cam1_msg = create_image_msg(ir_right, "stereo/camera1");
 
   // Publish image messages
   node.cam0_pub.publish(cam0_msg);
@@ -72,8 +103,7 @@ static void ir_handler(const rs2::frameset &fs,
   }
 }
 
-static void motion_handler(const rs2::frame &f,
-                           const intel_d435i_node_t &node,
+static void motion_handler(const rs2::frame &f, const intel_d435i_node_t &node,
                            lerp_buf_t &lerp_buf) {
   const auto mf = f.as<rs2::motion_frame>();
 
@@ -102,8 +132,8 @@ int main(int argc, char **argv) {
     // Setup RealSense sensor
     rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
     rs2::device device = rs2_connect();
-    rs_motion_module_t motion{device};
-    rs_stereo_module_t stereo{device};
+    rs_motion_module_t motion{device, node.motion_config};
+    rs_stereo_module_t stereo{device, node.stereo_config};
 
     // Process IMU stream
     lerp_buf_t lerp_buf;
@@ -118,7 +148,7 @@ int main(int argc, char **argv) {
     std::thread stereo_thread([&]() {
       while (true) {
         const auto fs = stereo.waitForFrame();
-        ir_handler(fs, node);
+        stereo_handler(fs, node);
       }
     });
 
@@ -126,7 +156,7 @@ int main(int argc, char **argv) {
     motion_thread.join();
     stereo_thread.join();
 
-  } catch (const rs2::error& e) {
+  } catch (const rs2::error &e) {
     FATAL("[RealSense Exception]: %s", e.what());
   }
 
