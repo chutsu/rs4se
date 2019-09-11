@@ -37,6 +37,16 @@ following topics:
     ~/motion/imu0           # "Synchronized" accel and gyro data via lerp
     ~/motion/accel0         # Accelerometer measurements
     ~/motion/gyro0          # Gyroscope measurements
+    
+
+# Troubleshoot
+
+**UVC header is not available**
+
+    terminate called after throwing an instance of 'rs2::invalid_value_error'
+      what():  UVC header is not available
+      
+Solution: [here](https://github.com/chutsu/rs4se/issues/3#issuecomment-530434550)
 
 
 # LICENSE
