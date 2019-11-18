@@ -1,3 +1,9 @@
+# Updates
+Added RGB feed, can be accessed with the following topic
+~/color/image  # RGB camera frames
+
+Changed the axis to match intel realsense-ros axis conventions
+
 # rs4se
 
 *rs4se* stands for *RealSense for State Estimation*. The goal is to wrap around
