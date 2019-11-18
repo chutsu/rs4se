@@ -56,6 +56,16 @@ static cv::Mat frame2cvmat(const rs2::frame &frame, const int width,
   return cv_frame;
 }
 
+static cv::Mat frame2cvmat_color(const rs2::frame &frame, const int width,
+                           const int height) {
+  const cv::Size size(width, height);
+  const auto format = CV_8UC3;
+  const auto stride = cv::Mat::AUTO_STEP;
+  //int stride = 3;
+  const cv::Mat cv_frame(size, format, (void *)frame.get_data(), stride);
+  return cv_frame;
+}
+
 static uint64_t vframe2ts(const rs2::video_frame &vf) {
   // Calculate half of the exposure time
   // -- Frame metadata timestamp
@@ -98,6 +108,27 @@ static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
   return msg;
 }
 
+static sensor_msgs::ImagePtr create_color_image_msg(const rs2::video_frame &vf,
+                                              const std::string &frame_id) {
+  // Form msg stamp
+  const uint64_t ts_ns = vframe2ts(vf);
+  ros::Time msg_stamp;
+  msg_stamp.fromNSec(ts_ns);
+
+  // Form msg header
+  std_msgs::Header header;
+  header.frame_id = frame_id;
+  header.stamp = msg_stamp;
+
+  // Image message
+  const int width = vf.get_width();
+  const int height = vf.get_height();
+  cv::Mat cv_frame = frame2cvmat_color(vf, width, height);
+  const auto msg = cv_bridge::CvImage(header, "rgb8", cv_frame).toImageMsg();
+
+  return msg;
+}
+
 static geometry_msgs::Vector3Stamped
 create_vec3_msg(const rs2::motion_frame &f, const std::string &frame_id) {
   // Form msg stamp
@@ -129,12 +160,12 @@ static sensor_msgs::Imu create_imu_msg(const double ts,
 
   msg.header.frame_id = "imu0";
   msg.header.stamp = ros::Time{ts};
-  msg.angular_velocity.x = gyro(0);
-  msg.angular_velocity.y = gyro(1);
-  msg.angular_velocity.z = gyro(2);
-  msg.linear_acceleration.x = accel(0);
-  msg.linear_acceleration.y = accel(1);
-  msg.linear_acceleration.z = accel(2);
+  msg.angular_velocity.x = gyro(2);
+  msg.angular_velocity.y = -gyro(0);
+  msg.angular_velocity.z = -gyro(1);
+  msg.linear_acceleration.x = accel(2);
+  msg.linear_acceleration.y = -accel(0);
+  msg.linear_acceleration.z = -accel(1);
 
   return msg;
 }
@@ -146,6 +177,17 @@ static void debug_imshow(const cv::Mat &frame_left,
   cv::hconcat(frame_left, frame_right, frame);
   cv::namedWindow("Stereo Module", cv::WINDOW_AUTOSIZE);
   cv::imshow("Stereo Module", frame);
+
+  if (cv::waitKey(1) == 'q') {
+    exit(-1);
+  }
+}
+
+static void debug_imshow_color(const cv::Mat &color_frame) {
+  // Display in a GUI
+  cv::Mat frame;
+  cv::namedWindow("RGB Camera Module", cv::WINDOW_AUTOSIZE);
+  cv::imshow("RGB Camera Module", color_frame);
 
   if (cv::waitKey(1) == 'q') {
     exit(-1);

@@ -26,6 +26,7 @@
 struct intel_d435i_node_t {
   image_transport::Publisher cam0_pub;
   image_transport::Publisher cam1_pub;
+  image_transport::Publisher color_pub;
   ros::Publisher gyro0_pub;
   ros::Publisher accel0_pub;
   ros::Publisher imu0_pub;
@@ -34,6 +35,7 @@ struct intel_d435i_node_t {
 
   rs_stereo_module_config_t stereo_config;
   rs_motion_module_config_t motion_config;
+  rs_camera_module_config_t color_config;
 
   intel_d435i_node_t(int argc, char **argv) {
     // Parse args
@@ -62,6 +64,17 @@ struct intel_d435i_node_t {
     ROS_GET_PARAM(ns + "/height", stereo_config.height);
     ROS_GET_PARAM(ns + "/exposure", stereo_config.exposure);
 
+    // added by Saeed Bastani
+    const std::string nsc = "camera";
+    ROS_GET_PARAM(nsc + "/global_time", global_time);
+    ROS_GET_PARAM(nsc + "/sync_size", color_config.sync_size);
+    ROS_GET_PARAM(nsc + "/color_fps", color_config.color_fps);
+    ROS_GET_PARAM(nsc + "/color_format", color_config.color_format);
+    ROS_GET_PARAM(nsc + "/color_width", color_config.color_width);
+    ROS_GET_PARAM(nsc + "/color_height", color_config.color_height);
+
+
+
     // Publishers
     // -- Stereo module
     image_transport::ImageTransport it(nh);
@@ -71,6 +84,12 @@ struct intel_d435i_node_t {
     gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
     accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
     imu0_pub = nh.advertise<ImuMsg>("motion/imu0", 1);
+    
+    // added by saeed bastani
+    // -- RGB Camera module
+    image_transport::ImageTransport cit(nh);
+    color_pub = cit.advertise("camera/color/image_raw", 1);
+
   }
 };
 
@@ -124,6 +143,50 @@ static void motion_handler(const rs2::frame &f, const intel_d435i_node_t &node,
   }
 }
 
+//added vy Saeed Bastani
+static void color_handler(const rs2::frameset &fc,
+                           const intel_d435i_node_t &node,
+                           const bool debug = false) {
+
+           for (auto it = fc.begin(); it != fc.end(); ++it)
+            {
+                auto f = (*it);
+                auto stream_type = f.get_profile().stream_type();
+                auto stream_index = f.get_profile().stream_index();
+                auto stream_format = f.get_profile().format();
+                auto stream_unique_id = f.get_profile().unique_id();
+
+               //printf("Frameset contain (%s, %d, %s %d) \n",
+               //             rs2_stream_to_string(stream_type), stream_index, rs2_format_to_string(stream_format), stream_unique_id);
+                
+            }  
+  if (fc.size() != 1) {
+    printf("received multiple frames in the color handler %d \n", fc.size());
+    return;
+  }
+
+  // Create cv::Mat image
+  const auto color_frame = fc.get_color_frame();
+  const int width = color_frame.get_width();
+  const int height = color_frame.get_height();
+  cv::Mat mFrame = frame2cvmat_color(color_frame, width, height);
+
+
+  // Build image messages
+  const auto color_msg = create_color_image_msg(color_frame, "_camera_color");
+  
+
+
+  // Publish image messages
+  node.color_pub.publish(color_msg);
+  //printf("received a frame in color stream");
+
+  // Debug
+  if (debug) {
+    debug_imshow_color(mFrame);
+  }
+}
+
 int main(int argc, char **argv) {
   try {
     // ROS
@@ -134,6 +197,7 @@ int main(int argc, char **argv) {
     rs2::device device = rs2_connect();
     rs_motion_module_t motion{device, node.motion_config};
     rs_stereo_module_t stereo{device, node.stereo_config};
+    rs_camera_module_t color{device, node.color_config};
 
     // Process IMU stream
     lerp_buf_t lerp_buf;
@@ -151,10 +215,17 @@ int main(int argc, char **argv) {
         stereo_handler(fs, node);
       }
     });
-
+    // Process color stream
+    std::thread color_thread([&]() {
+      while (true) {
+        const auto fc = color.waitForFrame();
+        color_handler(fc, node);
+      }
+    });
     // Join threads
     motion_thread.join();
     stereo_thread.join();
+    color_thread.join();
 
   } catch (const rs2::error &e) {
     FATAL("[RealSense Exception]: %s", e.what());

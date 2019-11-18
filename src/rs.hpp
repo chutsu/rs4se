@@ -123,7 +123,7 @@ public:
   void setStreamProfiles(const int accel_hz, const int gyro_hz) {
     bool accel_ok = false;
     bool gyro_ok = false;
-
+    rs2_list_sensors();
     // Go through Stream profiles
     const auto stream_profiles = sensor_.get_stream_profiles();
     for (const auto &stream_profile : stream_profiles) {
@@ -222,14 +222,21 @@ public:
 
   void setStreamProfile() {
     const auto stream_profiles = sensor_.get_stream_profiles();
+    //listStreamProfiles();
+    //printf("************************************************************* \n");
+    //printf("- [%d hz] [%s] [%dx%d] \n", config_.frame_rate,
+    //         config_.format.c_str(), config_.width, config_.height);
+    //printf("************************************************************* \n");
     for (const auto &stream_profile : stream_profiles) {
       const auto name = stream_profile.stream_name();
+      //printf("stream profile: %s \n", name.c_str());
       const auto rate = stream_profile.fps();
       const auto format = rs2_format_to_string(stream_profile.format());
       const auto vp = stream_profile.as<rs2::video_stream_profile>();
       const int width = vp.width();
       const int height = vp.height();
-
+      //printf("- %s [%d hz] [%s] [%dx%d] \n", name.c_str(), rate,
+      //       format, width, height);
       const bool rate_ok = (config_.frame_rate == rate);
       const bool format_ok = (config_.format == format);
       const bool width_ok = (config_.width == width);
@@ -273,4 +280,116 @@ public:
   }
 
   rs2::frameset waitForFrame() { return sync_.wait_for_frames(10000); }
+};
+
+// added by Saeed Bastani
+struct rs_camera_module_config_t {
+  int sync_size = 30;
+  bool global_time = true;
+  bool enable_color = true;
+  int color_fps = 30;
+  //std::string color_format = "CV_8UC3";
+  std::string color_format = "RGB8";
+  int color_width = 640;
+  int color_height = 480;
+  unsigned int fq_size = 1;
+
+};
+
+class rs_camera_module_t {
+  //bool global_time = true;
+  rs2::syncer sync_;
+  const rs2::device &device_;
+  rs2::frame_queue fq_;
+  rs2::sensor sensor_;
+  rs2::stream_profile profile_;
+  bool profile_set_ = false;
+
+  rs_camera_module_config_t config_;
+
+public:
+  rs_camera_module_t(const rs2::device &device)
+      : device_{device}, sync_{config_.sync_size} {
+    setup();
+  }
+
+  rs_camera_module_t(const rs2::device &device,
+                     const rs_camera_module_config_t &config)
+      : device_{device}, sync_{config_.sync_size}, config_{config} {
+    setup();
+  }
+
+  ~rs_camera_module_t() {
+    sensor_.stop();
+    sensor_.close();
+  }
+
+  void listStreamProfiles() {
+    // Go through Stream profiles
+    std::cout << "Camera module stream profiles:" << std::endl;
+    const auto stream_profiles = sensor_.get_stream_profiles();
+    for (const auto &stream_profile : stream_profiles) {
+      const auto stream_name = stream_profile.stream_name();
+      const auto stream_rate = stream_profile.fps();
+      const auto format = rs2_format_to_string(stream_profile.format());
+      const auto vp = stream_profile.as<rs2::video_stream_profile>();
+      printf("- %s [%d hz] [%s] [%dx%d] \n", stream_name.c_str(), stream_rate,
+             format, vp.width(), vp.height());
+    }
+  }
+
+  void setStreamProfile() {
+    const auto stream_profiles = sensor_.get_stream_profiles();
+    listStreamProfiles();
+    printf("************************************************************* \n");
+    printf("- [%d hz] [%s] [%dx%d] \n", config_.color_fps,
+             config_.color_format.c_str(), config_.color_width, config_.color_height);
+    printf("************************************************************* \n");
+    for (const auto &stream_profile : stream_profiles) {
+      const auto name = stream_profile.stream_name();
+      printf("stream profile: %s \n", name.c_str());
+      const auto rate = stream_profile.fps();
+      const auto format = rs2_format_to_string(stream_profile.format());
+      const auto vp = stream_profile.as<rs2::video_stream_profile>();
+      const int width = vp.width();
+      const int height = vp.height();
+      printf("- %s [%d hz] [%s] [%dx%d] \n", name.c_str(), rate,
+             format, width, height);
+      const bool rate_ok = (config_.color_fps == rate);
+      const bool format_ok = (config_.color_format == format);
+      const bool width_ok = (config_.color_width == width);
+      const bool height_ok = (config_.color_height == height);
+      const bool res_ok = (width_ok && height_ok);
+
+      if (rate_ok && format_ok && res_ok) {
+        if ("Color" == name) {
+          profile_ = stream_profile;
+          profile_set_ = true;
+      }
+    }
+    }
+
+    if (profile_set_ == false) {
+      FATAL("Failed to get camera module stream profile!");
+    }
+  }
+
+  void setup() {
+    if (rs2_get_sensors(device_, "RGB Camera", sensor_) != 0) {
+      FATAL("This RealSense device does not have a [Camera Module]");
+    }
+    setStreamProfile();
+
+     
+    //sensor_.set_option(RS2_OPTION_COLOR_ENABLED, config_.enable_color);
+    // Enable global time
+    sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, config_.global_time);
+
+
+    // Start sensor
+    sensor_.open({profile_});
+    sensor_.start(sync_);
+  }
+
+  rs2::frameset waitForFrame() { return sync_.wait_for_frames(10000);  }
 };
