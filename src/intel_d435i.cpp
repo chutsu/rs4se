@@ -40,10 +40,9 @@ struct intel_d435i_node_t {
     std::string node_name;
     for (int i = 1; i < argc; i++) {
       std::string arg(argv[i]);
-
-      // ros node name
       if (arg.find("__name:=") != std::string::npos) {
         node_name = arg.substr(8);
+        break;
       }
     }
 
@@ -53,20 +52,22 @@ struct intel_d435i_node_t {
 
     // ROS params
     const std::string ns = "stereo";
-    ROS_GET_PARAM(ns + "/global_time", global_time);
-    ROS_GET_PARAM(ns + "/sync_size", stereo_config.sync_size);
-    ROS_GET_PARAM(ns + "/enable_emitter", stereo_config.enable_emitter);
-    ROS_GET_PARAM(ns + "/frame_rate", stereo_config.frame_rate);
-    ROS_GET_PARAM(ns + "/format", stereo_config.format);
-    ROS_GET_PARAM(ns + "/width", stereo_config.width);
-    ROS_GET_PARAM(ns + "/height", stereo_config.height);
-    ROS_GET_PARAM(ns + "/exposure", stereo_config.exposure);
+    ROS_PARAM(nh, ns + "/global_time", global_time);
+    ROS_PARAM(nh, ns + "/sync_size", stereo_config.sync_size);
+    ROS_PARAM(nh, ns + "/enable_emitter", stereo_config.enable_emitter);
+    ROS_PARAM(nh, ns + "/frame_rate", stereo_config.frame_rate);
+    ROS_PARAM(nh, ns + "/format", stereo_config.format);
+    ROS_PARAM(nh, ns + "/width", stereo_config.width);
+    ROS_PARAM(nh, ns + "/height", stereo_config.height);
+    ROS_PARAM(nh, ns + "/exposure", stereo_config.exposure);
 
     // Publishers
     // -- Stereo module
     image_transport::ImageTransport it(nh);
     cam0_pub = it.advertise("stereo/camera0/image", 1);
     cam1_pub = it.advertise("stereo/camera1/image", 1);
+    // -- RGB module
+    // rgb_pub = it.advertise("rgb/image");
     // -- Motion module
     gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
     accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
@@ -147,7 +148,7 @@ int main(int argc, char **argv) {
     // Process stereo stream
     std::thread stereo_thread([&]() {
       while (true) {
-        const auto fs = stereo.waitForFrame();
+        const auto &fs = stereo.waitForFrame();
         stereo_handler(fs, node);
       }
     });

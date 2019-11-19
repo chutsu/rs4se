@@ -40,6 +40,15 @@ int test_rs2_stereo_module() {
   return 0;
 }
 
+int test_rs2_rgb_module() {
+  rs2::device device = rs2_connect();
+  rs_rgb_module_t rgb{device};
+
+  rgb.listStreamProfiles();
+
+  return 0;
+}
+
 int test_ts_correction() {
   // Calculate half of the exposure time
   const long long int frame_ts_us = 927545119;
@@ -90,6 +99,7 @@ void test_suite() {
   MU_ADD_TEST(test_rs2_get_sensors);
   MU_ADD_TEST(test_rs2_motion_module);
   MU_ADD_TEST(test_rs2_stereo_module);
+  MU_ADD_TEST(test_rs2_rgb_module);
   MU_ADD_TEST(test_ts_correction);
   MU_ADD_TEST(test_vframe2ts);
 }

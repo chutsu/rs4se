@@ -9,7 +9,9 @@ cd ~/catkin_ws
 # source devel/setup.bash
 # # catkin clean
 catkin build rs4se -DCMAKE_BUILD_TYPE=Release -j2
+# catkin build rs4se -DCMAKE_BUILD_TYPE=Debug -j2
 source devel/setup.bash
-roslaunch rs4se intel_d435i.launch
+##e roslaunch rs4se tel_d435i.launch
 # roslaunch rs4se intel_d435i-intrinsics_calib.launch
-# rosrun rs4se test_rs
+rosrun rs4se test_rs
+# rosrun --prefix 'gdb -ex run' rs4se test_rs

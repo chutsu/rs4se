@@ -18,8 +18,8 @@
           __LINE__, ##__VA_ARGS__);                                            \
   exit(-1)
 
-#define ROS_GET_PARAM(X, Y)                                                    \
-  if (nh.getParam(X, Y) == false) {                                            \
+#define ROS_PARAM(NH, X, Y)                                                    \
+  if (NH.getParam(X, Y) == false) {                                            \
     std::cerr << "Failed to get ROS param [" << X << "]!" << std::endl;        \
     exit(-1);                                                                  \
   }

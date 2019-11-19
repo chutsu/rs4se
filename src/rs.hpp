@@ -176,7 +176,7 @@ struct rs_stereo_module_config_t {
   std::string format = "Y8";
   int width = 640;
   int height = 480;
-  double exposure = 0.0f;
+  double exposure = 10000.0;
 };
 
 class rs_stereo_module_t {
@@ -264,7 +264,7 @@ public:
     // Enable global time
     sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, config_.global_time);
 
-    // Enable global time
+    // Enable exposure
     sensor_.set_option(RS2_OPTION_EXPOSURE, config_.exposure);
 
     // Start sensor
@@ -272,5 +272,111 @@ public:
     sensor_.start(sync_);
   }
 
-  rs2::frameset waitForFrame() { return sync_.wait_for_frames(10000); }
+  rs2::frameset waitForFrame() { return sync_.wait_for_frames(1000); }
+};
+
+struct rs_rgb_module_config_t {
+  bool global_time = true;
+  int sync_size = 30;
+
+  int frame_rate = 30;
+  std::string format = "Y8";
+  int width = 640;
+  int height = 480;
+  double exposure = 10000.0;
+};
+
+class rs_rgb_module_t {
+  const rs2::device &device_;
+  rs2::syncer sync_;
+  rs2::sensor sensor_;
+  rs2::stream_profile accel_profile_;
+  rs2::stream_profile gyro_profile_;
+  rs_rgb_module_config_t config_;
+
+public:
+  rs_rgb_module_t(const rs2::device &device)
+      : device_{device}, sync_{config_.sync_size} {
+    setup();
+  }
+
+  rs_rgb_module_t(const rs2::device &device,
+                  const rs_rgb_module_config_t &config)
+      : device_{device}, sync_{config.sync_size}, config_{config} {
+    setup();
+  }
+
+  ~rs_rgb_module_t() {
+    sensor_.stop();
+    sensor_.close();
+  }
+
+  void listStreamProfiles() {
+    // Go through Stream profiles
+    std::cout << "RGB camera stream profiles:" << std::endl;
+    const auto stream_profiles = sensor_.get_stream_profiles();
+    for (const auto &stream_profile : stream_profiles) {
+      std::cout << stream_profile << std::endl;
+      // const auto stream_name = stream_profile.stream_name();
+      // const auto stream_rate = stream_profile.fps();
+      // const auto format = rs2_format_to_string(stream_profile.format());
+      // const auto vp = stream_profile.as<rs2::video_stream_profile>();
+      // printf("- %s [%d hz] [%s] [%dx%d] \n", stream_name.c_str(),
+      // stream_rate,
+      //        format, vp.width(), vp.height());
+    }
+  }
+
+  void setStreamProfile() {
+    const auto stream_profiles = sensor_.get_stream_profiles();
+    for (const auto &stream_profile : stream_profiles) {
+      const auto name = stream_profile.stream_name();
+      const auto rate = stream_profile.fps();
+      const auto format = rs2_format_to_string(stream_profile.format());
+      const auto vp = stream_profile.as<rs2::video_stream_profile>();
+      const int width = vp.width();
+      const int height = vp.height();
+
+      const bool rate_ok = (config_.frame_rate == rate);
+      const bool format_ok = (config_.format == format);
+      const bool width_ok = (config_.width == width);
+      const bool height_ok = (config_.height == height);
+      const bool res_ok = (width_ok && height_ok);
+
+      // if (rate_ok && format_ok && res_ok) {
+      //   if ("Infrared 1" == name) {
+      //     profile1_ = stream_profile;
+      //     profile1_set_ = true;
+      //   } else if ("Infrared 2" == name) {
+      //     profile2_ = stream_profile;
+      //     profile2_set_ = true;
+      //   }
+      // }
+    }
+
+    // if (profile1_set_ == false && profile2_set_ == false) {
+    //   FATAL("Failed to get stereo module stream profile!");
+    // }
+  }
+
+  void setup() {
+    if (rs2_get_sensors(device_, "RGB Camera", sensor_) != 0) {
+      FATAL("This RealSense device does not have an [RGB Camera]");
+    }
+    // setStreamProfile();
+    //
+    // // Switch off laser emitter
+    // sensor_.set_option(RS2_OPTION_EMITTER_ENABLED, config_.enable_emitter);
+    //
+    // // Enable global time
+    // sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, config_.global_time);
+    //
+    // // Enable exposure
+    // sensor_.set_option(RS2_OPTION_EXPOSURE, config_.exposure);
+
+    // Start sensor
+    // sensor_.open({profile1_, profile2_});
+    // sensor_.open();
+    sensor_.start(sync_);
+  }
 };
