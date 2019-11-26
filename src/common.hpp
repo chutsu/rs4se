@@ -48,9 +48,8 @@ static inline uint64_t str2ts(const std::string &s) {
 }
 
 static cv::Mat frame2cvmat(const rs2::frame &frame, const int width,
-                           const int height) {
+                           const int height, const int format = CV_8UC1) {
   const cv::Size size(width, height);
-  const auto format = CV_8UC1;
   const auto stride = cv::Mat::AUTO_STEP;
   const cv::Mat cv_frame(size, format, (void *)frame.get_data(), stride);
   return cv_frame;
@@ -94,6 +93,28 @@ static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
   const int height = vf.get_height();
   cv::Mat cv_frame = frame2cvmat(vf, width, height);
   const auto msg = cv_bridge::CvImage(header, "mono8", cv_frame).toImageMsg();
+
+  return msg;
+}
+
+static sensor_msgs::ImagePtr create_depth_msg(const rs2::depth_frame &df,
+                                              const std::string &frame_id) {
+  // Form msg stamp
+  const uint64_t ts_ns = vframe2ts(df);
+  // should work fine since depth_frame is derived from video frame
+  ros::Time msg_stamp;
+  msg_stamp.fromNSec(ts_ns);
+
+  // Form msg header
+  std_msgs::Header header;
+  header.frame_id = frame_id;
+  header.stamp = msg_stamp;
+
+  // Image message
+  const int width = df.get_width();
+  const int height = df.get_height();
+  cv::Mat cv_frame = frame2cvmat(df, width, height, CV_16UC1);
+  const auto msg = cv_bridge::CvImage(header, "mono16", cv_frame).toImageMsg();
 
   return msg;
 }

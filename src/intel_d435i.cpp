@@ -26,6 +26,7 @@
 struct intel_d435i_node_t {
   image_transport::Publisher cam0_pub;
   image_transport::Publisher cam1_pub;
+  image_transport::Publisher depth_pub;
   ros::Publisher gyro0_pub;
   ros::Publisher accel0_pub;
   ros::Publisher imu0_pub;
@@ -57,7 +58,8 @@ struct intel_d435i_node_t {
     ROS_GET_PARAM(ns + "/sync_size", stereo_config.sync_size);
     ROS_GET_PARAM(ns + "/enable_emitter", stereo_config.enable_emitter);
     ROS_GET_PARAM(ns + "/frame_rate", stereo_config.frame_rate);
-    ROS_GET_PARAM(ns + "/format", stereo_config.format);
+    ROS_GET_PARAM(ns + "/format_stereo", stereo_config.format_stereo);
+    ROS_GET_PARAM(ns + "/format_depth", stereo_config.format_depth);
     ROS_GET_PARAM(ns + "/width", stereo_config.width);
     ROS_GET_PARAM(ns + "/height", stereo_config.height);
     ROS_GET_PARAM(ns + "/exposure", stereo_config.exposure);
@@ -71,34 +73,41 @@ struct intel_d435i_node_t {
     gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
     accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
     imu0_pub = nh.advertise<ImuMsg>("motion/imu0", 1);
+    // -- Depth module
+    image_transport::ImageTransport dit(nh);
+    depth_pub = dit.advertise("stereo/depth0/image", 1);
+
   }
 };
 
 static void stereo_handler(const rs2::frameset &fs,
                            const intel_d435i_node_t &node,
                            const bool debug = false) {
-  if (fs.size() != 2) {
+  if ((fs.size() < 2) || (fs.size() > 3)) {
     return;
   }
 
   // Create cv::Mat image
   const auto ir_left = fs.get_infrared_frame(1);
   const auto ir_right = fs.get_infrared_frame(2);
-  const int width = ir_left.get_width();
-  const int height = ir_left.get_height();
-  cv::Mat frame_left = frame2cvmat(ir_left, width, height);
-  cv::Mat frame_right = frame2cvmat(ir_right, width, height);
+  const auto depth_frame = fs.get_depth_frame();
 
   // Build image messages
   const auto cam0_msg = create_image_msg(ir_left, "stereo/camera0");
   const auto cam1_msg = create_image_msg(ir_right, "stereo/camera1");
+  const auto depth_msg = create_depth_msg(depth_frame, "stereo/depth0");
 
   // Publish image messages
   node.cam0_pub.publish(cam0_msg);
   node.cam1_pub.publish(cam1_msg);
+  node.depth_pub.publish(depth_msg);
 
   // Debug
   if (debug) {
+    const int width = ir_left.get_width();
+    const int height = ir_left.get_height();
+    cv::Mat frame_left = frame2cvmat(ir_left, width, height);
+    cv::Mat frame_right = frame2cvmat(ir_right, width, height);
     debug_imshow(frame_left, frame_right);
   }
 }
