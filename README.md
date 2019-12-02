@@ -13,13 +13,13 @@ In particular this driver makes the following assertions:
   the gyroscope to provide 400Hz as well instead of 250Hz.
 
 
-# TODO
+## TODO
 
   - Align depth frames `~/stereo/depth0/image` to RGB camera.
   - More rigorous unit tests
   - GUI to change parameters on the fly
 
-# Install
+## Install
 
 This project depends on [librealsense2][librealsense2]. Additionally, make sure
 you patch your OS kernel following the prerequisit instructions detailed
@@ -30,7 +30,7 @@ you patch your OS kernel following the prerequisit instructions detailed
     catkin build
 
 
-# Run
+## Run
 
     source <PATH TO YOUR CATKIN WS>/devel/setup.bash
     roslaunch rs4se intel_d435i.launch
@@ -47,7 +47,7 @@ following topics:
     ~/motion/gyro0          # Gyroscope measurements
 
 
-# Troubleshoot
+## Troubleshoot
 
 **UVC header is not available**
 
@@ -57,7 +57,7 @@ following topics:
 Solution: [here](https://github.com/chutsu/rs4se/issues/3#issuecomment-530434550)
 
 
-# LICENSE
+## LICENSE
 
 Copyright (c) <2017> <Chris Choi>. All rights reserved.
 
