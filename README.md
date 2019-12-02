@@ -1,16 +1,17 @@
 # rs4se
 
 *rs4se* stands for *RealSense for State Estimation*. The goal is to wrap around
-`librealsense2` and provide developers with usable visual and inertial data for
-localization and or mapping.
+`librealsense2` and provide developers with usable visual, inertial and depth
+data for SLAM.
 
 In particular this driver makes the following assertions:
 
-- Infrared stereo camera timestamps are captured at mid-exposure
+- All camera frames (IR and RGB) timestamps are captured at mid-exposure
 - Accelerometer measurements are lerped against the gyroscope
   measurements to provide "synchronized" `sensor_msgs::Imu` messages.
-  e.g. If gyroscope is set to 400Hz, the accelerometer will be lerped against
-  the gyroscope to provide 400Hz as well instead of 250Hz.
+  e.g. If gyroscope is 400Hz and the accelerometer is 250Hz, the accelerometer
+  will be lerped against the gyroscope to provide synchronized 400Hz
+  measurements.
 
 
 ## TODO
@@ -18,6 +19,7 @@ In particular this driver makes the following assertions:
   - Align depth frames `~/stereo/depth0/image` to RGB camera.
   - More rigorous unit tests
   - GUI to change parameters on the fly
+
 
 ## Install
 
