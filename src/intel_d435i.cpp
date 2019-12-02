@@ -32,8 +32,6 @@ struct intel_d435i_node_t {
   ros::Publisher accel0_pub;
   ros::Publisher imu0_pub;
 
-  bool global_time;
-
   rs_rgb_module_config_t rgb_config;
   rs_stereo_module_config_t stereo_config;
   rs_motion_module_config_t motion_config;
@@ -57,7 +55,7 @@ struct intel_d435i_node_t {
     // -- RGB module
     {
       const std::string ns = "rgb";
-      ROS_PARAM(nh, ns + "/global_time", global_time);
+      ROS_PARAM(nh, ns + "/global_time", rgb_config.global_time);
       ROS_PARAM(nh, ns + "/format", rgb_config.format);
       ROS_PARAM(nh, ns + "/frame_rate", rgb_config.frame_rate);
       ROS_PARAM(nh, ns + "/width", rgb_config.width);
@@ -67,9 +65,10 @@ struct intel_d435i_node_t {
     // -- Stereo module
     {
       const std::string ns = "stereo";
-      ROS_PARAM(nh, ns + "/global_time", global_time);
+      ROS_PARAM(nh, ns + "/global_time", stereo_config.global_time);
       ROS_PARAM(nh, ns + "/sync_size", stereo_config.sync_size);
       ROS_PARAM(nh, ns + "/enable_depth", stereo_config.enable_depth);
+      ROS_PARAM(nh, ns + "/enable_emitter", stereo_config.enable_emitter);
       ROS_PARAM(nh, ns + "/format_stereo", stereo_config.format_stereo);
       if (stereo_config.enable_depth) {
         ROS_PARAM(nh, ns + "/format_depth", stereo_config.format_depth);
@@ -78,6 +77,13 @@ struct intel_d435i_node_t {
       ROS_PARAM(nh, ns + "/width", stereo_config.width);
       ROS_PARAM(nh, ns + "/height", stereo_config.height);
       ROS_PARAM(nh, ns + "/exposure", stereo_config.exposure);
+    }
+    // -- Motion module
+    {
+      const std::string ns = "motion";
+      ROS_PARAM(nh, ns + "/global_time", motion_config.global_time);
+      ROS_PARAM(nh, ns + "/accel_hz", motion_config.accel_hz);
+      ROS_PARAM(nh, ns + "/gyro_hz", motion_config.gyro_hz);
     }
 
     // Publishers

@@ -177,6 +177,7 @@ struct rs_stereo_module_config_t {
   bool global_time = true;
   int sync_size = 30;
   bool enable_depth = true;
+  bool enable_emitter = true;
 
   std::string format_stereo = "Y8";
   std::string format_depth = "Z16";
@@ -230,8 +231,7 @@ public:
   }
 
   void setStreamProfile() {
-    const auto stream_profiles = sensor_.get_stream_profiles();
-    for (const auto &stream_profile : stream_profiles) {
+    for (const auto &stream_profile : sensor_.get_stream_profiles()) {
       const auto name = stream_profile.stream_name();
       const auto rate = stream_profile.fps();
       const auto format = rs2_format_to_string(stream_profile.format());
@@ -259,7 +259,7 @@ public:
           profile_stereo2_set_ = true;
         }
       } else if (rate_ok && format_depth_ok && res_ok) {
-        if ("Depth" == name) {
+        if (config_.enable_depth && "Depth" == name) {
           printf("Depth0: [%d hz] [%s] [%dx%d] \n", rate, format, width,
                  height);
           profile_depth_ = stream_profile;
@@ -269,7 +269,10 @@ public:
     }
 
     if (profile_stereo1_set_ == false || profile_stereo2_set_ == false) {
-      FATAL("Failed to set stereo module stream profiles!");
+      FATAL("Failed to set IR stream profiles for stereo module!");
+    }
+    if (config_.enable_depth && profile_depth_set_ == false) {
+      FATAL("Failed to set depth stream profile for stereo module!");
     }
   }
 
@@ -280,7 +283,10 @@ public:
     setStreamProfile();
 
     // Laser emitter
-    sensor_.set_option(RS2_OPTION_EMITTER_ENABLED, config_.enable_depth);
+    if (config_.enable_depth == false && config_.enable_emitter == true) {
+      FATAL("Enable IR emitter even though depth is not estimated?");
+    }
+    sensor_.set_option(RS2_OPTION_EMITTER_ENABLED, config_.enable_emitter);
 
     // Global time
     sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, config_.global_time);
