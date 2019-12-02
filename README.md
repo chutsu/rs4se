@@ -7,17 +7,22 @@ localization and or mapping.
 In particular this driver makes the following assertions:
 
 - Infrared stereo camera timestamps are captured at mid-exposure
-- Laser emitter is switched off
 - Accelerometer measurements are lerped against the gyroscope
   measurements to provide "synchronized" `sensor_msgs::Imu` messages.
   e.g. If gyroscope is set to 400Hz, the accelerometer will be lerped against
   the gyroscope to provide 400Hz as well instead of 250Hz.
 
 
+# TODO
+
+  - Align depth frames `~/stereo/depth0/image` to RGB camera.
+  - More rigorous unit tests
+  - GUI to change parameters on the fly
+
 # Install
 
-This project depends on [librealsense2][librealsense2]. Additionally, make sure 
-you patch your OS kernel following the prerequisit instructions detailed 
+This project depends on [librealsense2][librealsense2]. Additionally, make sure
+you patch your OS kernel following the prerequisit instructions detailed
 [here][install_prerequisit]. Then build `rs4se` with the following commands:
 
     cd <PATH TO YOUR CATKIN WS>/src
@@ -33,12 +38,14 @@ you patch your OS kernel following the prerequisit instructions detailed
 The above launch file will launch the `intel_d435i` ros node and publish the
 following topics:
 
-    ~/stereo/camera0/image  # Infrared camera frames
-    ~/stereo/camera1/image  # Infrared camera frames
+    ~/rgb/camera0/image     # RGB camera frames
+    ~/stereo/camera0/image  # Infrared camera (left) frames
+    ~/stereo/camera1/image  # Infrared camera (right) frames
+    ~/stereo/depth0/image   # Depth image (if enabled) aligned to /stereo/camera0
     ~/motion/imu0           # "Synchronized" accel and gyro data via lerp
     ~/motion/accel0         # Accelerometer measurements
     ~/motion/gyro0          # Gyroscope measurements
-    
+
 
 # Troubleshoot
 
@@ -46,7 +53,7 @@ following topics:
 
     terminate called after throwing an instance of 'rs2::invalid_value_error'
       what():  UVC header is not available
-      
+
 Solution: [here](https://github.com/chutsu/rs4se/issues/3#issuecomment-530434550)
 
 
