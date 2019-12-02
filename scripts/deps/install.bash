@@ -18,7 +18,7 @@ install_base() {
 
 apt_update
 install_base
+install ros
 install eigen
 install opencv3
 install realsense
-install ros
