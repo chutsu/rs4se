@@ -26,6 +26,7 @@
 struct intel_d435i_node_t {
   image_transport::Publisher cam0_pub;
   image_transport::Publisher cam1_pub;
+  image_transport::Publisher depth_pub;
   ros::Publisher gyro0_pub;
   ros::Publisher accel0_pub;
   ros::Publisher imu0_pub;
@@ -54,52 +55,63 @@ struct intel_d435i_node_t {
     const std::string ns = "stereo";
     ROS_PARAM(nh, ns + "/global_time", global_time);
     ROS_PARAM(nh, ns + "/sync_size", stereo_config.sync_size);
-    ROS_PARAM(nh, ns + "/enable_emitter", stereo_config.enable_emitter);
+    ROS_PARAM(nh, ns + "/enable_depth", stereo_config.enable_depth);
+    ROS_PARAM(nh, ns + "/format_stereo", stereo_config.format_stereo);
+    if (stereo_config.enable_depth) {
+      ROS_PARAM(nh, ns + "/format_depth", stereo_config.format_depth);
+    }
     ROS_PARAM(nh, ns + "/frame_rate", stereo_config.frame_rate);
-    ROS_PARAM(nh, ns + "/format", stereo_config.format);
     ROS_PARAM(nh, ns + "/width", stereo_config.width);
     ROS_PARAM(nh, ns + "/height", stereo_config.height);
     ROS_PARAM(nh, ns + "/exposure", stereo_config.exposure);
 
     // Publishers
     // -- Stereo module
-    image_transport::ImageTransport it(nh);
-    cam0_pub = it.advertise("stereo/camera0/image", 1);
-    cam1_pub = it.advertise("stereo/camera1/image", 1);
+    image_transport::ImageTransport img_it(nh);
+    cam0_pub = img_it.advertise("stereo/camera0/image", 1);
+    cam1_pub = img_it.advertise("stereo/camera1/image", 1);
     // -- RGB module
     // rgb_pub = it.advertise("rgb/image");
     // -- Motion module
     gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
     accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
     imu0_pub = nh.advertise<ImuMsg>("motion/imu0", 1);
+    // -- Depth module
+    if (stereo_config.enable_depth) {
+      image_transport::ImageTransport depth_it(nh);
+      depth_pub = depth_it.advertise("stereo/depth0/image", 1);
+    }
   }
 };
 
 static void stereo_handler(const rs2::frameset &fs,
                            const intel_d435i_node_t &node,
                            const bool debug = false) {
-  if (fs.size() != 2) {
+  if ((fs.size() < 2) || (fs.size() > 3)) {
     return;
   }
 
-  // Create cv::Mat image
+  // Get stereo infrared frames and publish
   const auto ir_left = fs.get_infrared_frame(1);
   const auto ir_right = fs.get_infrared_frame(2);
-  const int width = ir_left.get_width();
-  const int height = ir_left.get_height();
-  cv::Mat frame_left = frame2cvmat(ir_left, width, height);
-  cv::Mat frame_right = frame2cvmat(ir_right, width, height);
-
-  // Build image messages
   const auto cam0_msg = create_image_msg(ir_left, "stereo/camera0");
   const auto cam1_msg = create_image_msg(ir_right, "stereo/camera1");
-
-  // Publish image messages
   node.cam0_pub.publish(cam0_msg);
   node.cam1_pub.publish(cam1_msg);
 
+  // Get depth frame and publish
+  if (node.stereo_config.enable_depth) {
+    const auto depth_frame = fs.get_depth_frame();
+    const auto depth_msg = create_depth_msg(depth_frame, "stereo/depth0");
+    node.depth_pub.publish(depth_msg);
+  }
+
   // Debug
   if (debug) {
+    const int width = ir_left.get_width();
+    const int height = ir_left.get_height();
+    cv::Mat frame_left = frame2cvmat(ir_left, width, height);
+    cv::Mat frame_right = frame2cvmat(ir_right, width, height);
     debug_imshow(frame_left, frame_right);
   }
 }

@@ -170,10 +170,11 @@ public:
 struct rs_stereo_module_config_t {
   bool global_time = true;
   int sync_size = 30;
-  bool enable_emitter = false;
+  bool enable_depth = true;
 
+  std::string format_stereo = "Y8";
+  std::string format_depth = "Z16";
   int frame_rate = 30;
-  std::string format = "Y8";
   int width = 640;
   int height = 480;
   double exposure = 10000.0;
@@ -183,10 +184,12 @@ class rs_stereo_module_t {
   const rs2::device &device_;
   rs2::syncer sync_;
   rs2::sensor sensor_;
-  rs2::stream_profile profile1_;
-  rs2::stream_profile profile2_;
-  bool profile1_set_ = false;
-  bool profile2_set_ = false;
+  rs2::stream_profile profile_stereo1_;
+  rs2::stream_profile profile_stereo2_;
+  rs2::stream_profile profile_depth_;
+  bool profile_stereo1_set_ = false;
+  bool profile_stereo2_set_ = false;
+  bool profile_depth_set_ = false;
   rs_stereo_module_config_t config_;
 
 public:
@@ -231,24 +234,31 @@ public:
       const int height = vp.height();
 
       const bool rate_ok = (config_.frame_rate == rate);
-      const bool format_ok = (config_.format == format);
+      const bool format_stereo_ok = (config_.format_stereo == format);
+      const bool format_depth_ok = (config_.format_depth == format);
       const bool width_ok = (config_.width == width);
       const bool height_ok = (config_.height == height);
       const bool res_ok = (width_ok && height_ok);
 
-      if (rate_ok && format_ok && res_ok) {
+      if (rate_ok && format_stereo_ok && res_ok) {
         if ("Infrared 1" == name) {
-          profile1_ = stream_profile;
-          profile1_set_ = true;
+          profile_stereo1_ = stream_profile;
+          profile_stereo1_set_ = true;
         } else if ("Infrared 2" == name) {
-          profile2_ = stream_profile;
-          profile2_set_ = true;
+          profile_stereo2_ = stream_profile;
+          profile_stereo2_set_ = true;
+        }
+      } else if (rate_ok && format_depth_ok && res_ok) {
+        if ("Depth" == name) {
+          profile_depth_ = stream_profile;
+          profile_depth_set_ = true;
         }
       }
     }
 
-    if (profile1_set_ == false && profile2_set_ == false) {
-      FATAL("Failed to get stereo module stream profile!");
+    if (profile_stereo1_set_ == false || profile_stereo2_set_ == false ||
+        profile_depth_set_ == false) {
+      FATAL("Failed to set stereo module stream profiles!");
     }
   }
 
@@ -258,17 +268,17 @@ public:
     }
     setStreamProfile();
 
-    // Switch off laser emitter
-    sensor_.set_option(RS2_OPTION_EMITTER_ENABLED, config_.enable_emitter);
+    // Laser emitter
+    sensor_.set_option(RS2_OPTION_EMITTER_ENABLED, config_.enable_depth);
 
-    // Enable global time
+    // Global time
     sensor_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, config_.global_time);
 
-    // Enable exposure
+    // Exposure
     sensor_.set_option(RS2_OPTION_EXPOSURE, config_.exposure);
 
     // Start sensor
-    sensor_.open({profile1_, profile2_});
+    sensor_.open({profile_stereo1_, profile_stereo2_, profile_depth_});
     sensor_.start(sync_);
   }
 

@@ -16,8 +16,9 @@ In particular this driver makes the following assertions:
 
 # Install
 
-This project depends on [librealsense][librealsense].  Install it before
-issuing the following commands:
+This project depends on [librealsense2][librealsense2]. Additionally, make sure 
+you patch your OS kernel following the prerequisit instructions detailed 
+[here][install_prerequisit]. Then build `rs4se` with the following commands:
 
     cd <PATH TO YOUR CATKIN WS>/src
     git clone https://github.com/chutsu/rs4se
@@ -82,4 +83,5 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 
-[librealsense]: https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
+[librealsense2]: https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
+[install_prerequisit]: https://github.com/IntelRealSense/librealsense/blob/master/doc/installation.md#prerequisites

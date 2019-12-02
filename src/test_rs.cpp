@@ -99,9 +99,9 @@ void test_suite() {
   MU_ADD_TEST(test_rs2_get_sensors);
   MU_ADD_TEST(test_rs2_motion_module);
   MU_ADD_TEST(test_rs2_stereo_module);
-  MU_ADD_TEST(test_rs2_rgb_module);
-  MU_ADD_TEST(test_ts_correction);
-  MU_ADD_TEST(test_vframe2ts);
+  // MU_ADD_TEST(test_rs2_rgb_module);
+  // MU_ADD_TEST(test_ts_correction);
+  // MU_ADD_TEST(test_vframe2ts);
 }
 
 MU_RUN_TESTS(test_suite);
