@@ -24,8 +24,9 @@
 #define ImuMsg sensor_msgs::Imu
 
 struct intel_d435i_node_t {
-  image_transport::Publisher cam0_pub;
-  image_transport::Publisher cam1_pub;
+  image_transport::Publisher rgb_pub;
+  image_transport::Publisher ir0_pub;
+  image_transport::Publisher ir1_pub;
   image_transport::Publisher depth_pub;
   ros::Publisher gyro0_pub;
   ros::Publisher accel0_pub;
@@ -33,6 +34,7 @@ struct intel_d435i_node_t {
 
   bool global_time;
 
+  rs_rgb_module_config_t rgb_config;
   rs_stereo_module_config_t stereo_config;
   rs_motion_module_config_t motion_config;
 
@@ -52,52 +54,83 @@ struct intel_d435i_node_t {
     ros::NodeHandle nh;
 
     // ROS params
-    const std::string ns = "stereo";
-    ROS_PARAM(nh, ns + "/global_time", global_time);
-    ROS_PARAM(nh, ns + "/sync_size", stereo_config.sync_size);
-    ROS_PARAM(nh, ns + "/enable_depth", stereo_config.enable_depth);
-    ROS_PARAM(nh, ns + "/format_stereo", stereo_config.format_stereo);
-    if (stereo_config.enable_depth) {
-      ROS_PARAM(nh, ns + "/format_depth", stereo_config.format_depth);
+    // -- RGB module
+    {
+      const std::string ns = "rgb";
+      ROS_PARAM(nh, ns + "/global_time", global_time);
+      ROS_PARAM(nh, ns + "/format", rgb_config.format);
+      ROS_PARAM(nh, ns + "/frame_rate", rgb_config.frame_rate);
+      ROS_PARAM(nh, ns + "/width", rgb_config.width);
+      ROS_PARAM(nh, ns + "/height", rgb_config.height);
+      ROS_PARAM(nh, ns + "/exposure", rgb_config.exposure);
     }
-    ROS_PARAM(nh, ns + "/frame_rate", stereo_config.frame_rate);
-    ROS_PARAM(nh, ns + "/width", stereo_config.width);
-    ROS_PARAM(nh, ns + "/height", stereo_config.height);
-    ROS_PARAM(nh, ns + "/exposure", stereo_config.exposure);
+    // -- Stereo module
+    {
+      const std::string ns = "stereo";
+      ROS_PARAM(nh, ns + "/global_time", global_time);
+      ROS_PARAM(nh, ns + "/sync_size", stereo_config.sync_size);
+      ROS_PARAM(nh, ns + "/enable_depth", stereo_config.enable_depth);
+      ROS_PARAM(nh, ns + "/format_stereo", stereo_config.format_stereo);
+      if (stereo_config.enable_depth) {
+        ROS_PARAM(nh, ns + "/format_depth", stereo_config.format_depth);
+      }
+      ROS_PARAM(nh, ns + "/frame_rate", stereo_config.frame_rate);
+      ROS_PARAM(nh, ns + "/width", stereo_config.width);
+      ROS_PARAM(nh, ns + "/height", stereo_config.height);
+      ROS_PARAM(nh, ns + "/exposure", stereo_config.exposure);
+    }
 
     // Publishers
-    // -- Stereo module
-    image_transport::ImageTransport img_it(nh);
-    cam0_pub = img_it.advertise("stereo/camera0/image", 1);
-    cam1_pub = img_it.advertise("stereo/camera1/image", 1);
     // -- RGB module
-    // rgb_pub = it.advertise("rgb/image");
-    // -- Motion module
-    gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
-    accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
-    imu0_pub = nh.advertise<ImuMsg>("motion/imu0", 1);
-    // -- Depth module
+    image_transport::ImageTransport rgb_it(nh);
+    rgb_pub = rgb_it.advertise("rgb/camera0/image", 1);
+    // -- Stereo module
+    image_transport::ImageTransport stereo_it(nh);
+    ir0_pub = stereo_it.advertise("stereo/camera0/image", 1);
+    ir1_pub = stereo_it.advertise("stereo/camera1/image", 1);
     if (stereo_config.enable_depth) {
       image_transport::ImageTransport depth_it(nh);
       depth_pub = depth_it.advertise("stereo/depth0/image", 1);
     }
+    // -- Motion module
+    gyro0_pub = nh.advertise<Vector3StampedMsg>("motion/gyro0", 1);
+    accel0_pub = nh.advertise<Vector3StampedMsg>("motion/accel0", 1);
+    imu0_pub = nh.advertise<ImuMsg>("motion/imu0", 1);
   }
 };
+
+static void rgb_handler(const rs2::frameset &fc, const intel_d435i_node_t &node,
+                        const bool debug = false) {
+  const auto rgb_frame = fc.get_color_frame();
+  const auto msg = create_image_msg(rgb_frame, "rgb/camera0", true);
+  node.rgb_pub.publish(msg);
+
+  // Debug
+  if (debug) {
+    const int width = rgb_frame.get_width();
+    const int height = rgb_frame.get_height();
+    cv::Mat frame = frame2cvmat(rgb_frame, width, height, true);
+    cv::imshow("Image", frame);
+  }
+}
 
 static void stereo_handler(const rs2::frameset &fs,
                            const intel_d435i_node_t &node,
                            const bool debug = false) {
-  if ((fs.size() < 2) || (fs.size() > 3)) {
+  // Pre-check
+  if (node.stereo_config.enable_depth && fs.size() != 3) {
+    return;
+  } else if (node.stereo_config.enable_depth == false && fs.size() != 2) {
     return;
   }
 
   // Get stereo infrared frames and publish
   const auto ir_left = fs.get_infrared_frame(1);
   const auto ir_right = fs.get_infrared_frame(2);
-  const auto cam0_msg = create_image_msg(ir_left, "stereo/camera0");
-  const auto cam1_msg = create_image_msg(ir_right, "stereo/camera1");
-  node.cam0_pub.publish(cam0_msg);
-  node.cam1_pub.publish(cam1_msg);
+  const auto cam0_msg = create_image_msg(ir_left, "stereo/camera0", false);
+  const auto cam1_msg = create_image_msg(ir_right, "stereo/camera1", false);
+  node.ir0_pub.publish(cam0_msg);
+  node.ir1_pub.publish(cam1_msg);
 
   // Get depth frame and publish
   if (node.stereo_config.enable_depth) {
@@ -110,8 +143,8 @@ static void stereo_handler(const rs2::frameset &fs,
   if (debug) {
     const int width = ir_left.get_width();
     const int height = ir_left.get_height();
-    cv::Mat frame_left = frame2cvmat(ir_left, width, height);
-    cv::Mat frame_right = frame2cvmat(ir_right, width, height);
+    cv::Mat frame_left = frame2cvmat(ir_left, width, height, false);
+    cv::Mat frame_right = frame2cvmat(ir_right, width, height, false);
     debug_imshow(frame_left, frame_right);
   }
 }
@@ -145,15 +178,15 @@ int main(int argc, char **argv) {
     // Setup RealSense sensor
     rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
     rs2::device device = rs2_connect();
-    rs_motion_module_t motion{device, node.motion_config};
+    rs_rgb_module_t rgb{device, node.rgb_config};
     rs_stereo_module_t stereo{device, node.stereo_config};
+    rs_motion_module_t motion{device, node.motion_config};
 
-    // Process IMU stream
-    lerp_buf_t lerp_buf;
-    std::thread motion_thread([&]() {
+    // Process rgb stream
+    std::thread rgb_thread([&]() {
       while (true) {
-        const auto f = motion.waitForFrame();
-        motion_handler(f, node, lerp_buf);
+        const auto &fs = rgb.waitForFrame();
+        rgb_handler(fs, node);
       }
     });
 
@@ -165,9 +198,19 @@ int main(int argc, char **argv) {
       }
     });
 
+    // Process IMU stream
+    lerp_buf_t lerp_buf;
+    std::thread motion_thread([&]() {
+      while (true) {
+        const auto f = motion.waitForFrame();
+        motion_handler(f, node, lerp_buf);
+      }
+    });
+
     // Join threads
-    motion_thread.join();
+    rgb_thread.join();
     stereo_thread.join();
+    motion_thread.join();
 
   } catch (const rs2::error &e) {
     FATAL("[RealSense Exception]: %s", e.what());

@@ -48,7 +48,7 @@ static inline uint64_t str2ts(const std::string &s) {
 }
 
 static cv::Mat frame2cvmat(const rs2::frame &frame, const int width,
-                           const int height, const int format = CV_8UC1) {
+                           const int height, const int format) {
   const cv::Size size(width, height);
   const auto stride = cv::Mat::AUTO_STEP;
   const cv::Mat cv_frame(size, format, (void *)frame.get_data(), stride);
@@ -77,7 +77,8 @@ static uint64_t vframe2ts(const rs2::video_frame &vf) {
 }
 
 static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
-                                              const std::string &frame_id) {
+                                              const std::string &frame_id,
+                                              bool is_color) {
   // Form msg stamp
   const uint64_t ts_ns = vframe2ts(vf);
   ros::Time msg_stamp;
@@ -91,10 +92,13 @@ static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
   // Image message
   const int width = vf.get_width();
   const int height = vf.get_height();
-  cv::Mat cv_frame = frame2cvmat(vf, width, height);
-  const auto msg = cv_bridge::CvImage(header, "mono8", cv_frame).toImageMsg();
-
-  return msg;
+  if (is_color) {
+    cv::Mat cv_frame = frame2cvmat(vf, width, height, CV_8UC3);
+    return cv_bridge::CvImage(header, "rgb8", cv_frame).toImageMsg();
+  } else {
+    cv::Mat cv_frame = frame2cvmat(vf, width, height, CV_8UC1);
+    return cv_bridge::CvImage(header, "mono8", cv_frame).toImageMsg();
+  }
 }
 
 static sensor_msgs::ImagePtr create_depth_msg(const rs2::depth_frame &df,
