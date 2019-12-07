@@ -22,7 +22,11 @@ static int failed = 0;
 #define MU_ASSERT(TEST, MESSAGE)                                               \
   do {                                                                         \
     if (!(TEST)) {                                                             \
-      printf("%sERROR!%s [%s:%d] %s\n", KRED, KNRM, __func__, __LINE__,        \
+      printf("%sERROR!%s [%s:%d] %s\n",                                        \
+             KRED,                                                             \
+             KNRM,                                                             \
+             __func__,                                                         \
+             __LINE__,                                                         \
              MESSAGE);                                                         \
       return -1;                                                               \
     }                                                                          \
@@ -31,8 +35,14 @@ static int failed = 0;
 #define MU_CHECK(TEST)                                                         \
   do {                                                                         \
     if ((TEST) == false) {                                                     \
-      printf("%sERROR!%s [%s:%d] %s %sFAILED!%s\n", KRED, KNRM, __func__,      \
-             __LINE__, #TEST, KRED, KNRM);                                     \
+      printf("%sERROR!%s [%s:%d] %s %sFAILED!%s\n",                            \
+             KRED,                                                             \
+             KNRM,                                                             \
+             __func__,                                                         \
+             __LINE__,                                                         \
+             #TEST,                                                            \
+             KRED,                                                             \
+             KNRM);                                                            \
       return -1;                                                               \
     }                                                                          \
   } while (0)
@@ -40,8 +50,15 @@ static int failed = 0;
 #define MU_CHECK_EQ(expected, actual)                                          \
   do {                                                                         \
     if (!(expected == actual)) {                                               \
-      printf("%sERROR!%s [%s:%d] %s != %s %sFAILED!%s\n", KRED, KNRM,          \
-             __func__, __LINE__, #expected, #actual, KRED, KNRM);              \
+      printf("%sERROR!%s [%s:%d] %s != %s %sFAILED!%s\n",                      \
+             KRED,                                                             \
+             KNRM,                                                             \
+             __func__,                                                         \
+             __LINE__,                                                         \
+             #expected,                                                        \
+             #actual,                                                          \
+             KRED,                                                             \
+             KNRM);                                                            \
       return -1;                                                               \
     }                                                                          \
   } while (0)
@@ -49,8 +66,14 @@ static int failed = 0;
 #define MU_FALSE(TEST)                                                         \
   do {                                                                         \
     if (TEST != false) {                                                       \
-      printf("%sERROR!%s [%s:%d] %s != false %sFAILED!%s\n", KRED, KNRM,       \
-             __func__, __LINE__, #TEST, KRED, KNRM);                           \
+      printf("%sERROR!%s [%s:%d] %s != false %sFAILED!%s\n",                   \
+             KRED,                                                             \
+             KNRM,                                                             \
+             __func__,                                                         \
+             __LINE__,                                                         \
+             #TEST,                                                            \
+             KRED,                                                             \
+             KNRM);                                                            \
       return -1;                                                               \
     }                                                                          \
   } while (0)
@@ -58,8 +81,13 @@ static int failed = 0;
 #define MU_CHECK_NEAR(expected, actual, tolerance)                             \
   do {                                                                         \
     if (!(fabs(expected - actual) < tolerance)) {                              \
-      printf("%sERROR!%s [%s:%d] %sFAILED!%s\n", KRED, KNRM, __func__,         \
-             __LINE__, KRED, KNRM);                                            \
+      printf("%sERROR!%s [%s:%d] %sFAILED!%s\n",                               \
+             KRED,                                                             \
+             KNRM,                                                             \
+             __func__,                                                         \
+             __LINE__,                                                         \
+             KRED,                                                             \
+             KNRM);                                                            \
       return -1;                                                               \
     }                                                                          \
   } while (0)
@@ -67,9 +95,17 @@ static int failed = 0;
 #define MU_CHECK_FLOAT(expected, actual)                                       \
   do {                                                                         \
     if (!(fabs(expected - actual) < 1e-6)) {                                   \
-      printf("%sERROR!%s [%s:%d] %sFAILED!%s\n", KRED, KNRM, __func__,         \
-             __LINE__, KRED, KNRM);                                            \
-      printf("%sReason: %f != %f%s\n", KRED, (float)expected, (float)actual,   \
+      printf("%sERROR!%s [%s:%d] %sFAILED!%s\n",                               \
+             KRED,                                                             \
+             KNRM,                                                             \
+             __func__,                                                         \
+             __LINE__,                                                         \
+             KRED,                                                             \
+             KNRM);                                                            \
+      printf("%sReason: %f != %f%s\n",                                         \
+             KRED,                                                             \
+             (float) expected,                                                 \
+             (float) actual,                                                   \
              KNRM);                                                            \
       return -1;                                                               \
     }                                                                          \
@@ -127,8 +163,6 @@ static int failed = 0;
   }
 
 #define OCTAVE_SCRIPT(A)                                                       \
-  if (system("octave " A) != 0) {                                              \
-    FATAL("Octave script [%s] failed !", A);                                   \
-  }
+  if (system("octave " A) != 0) { FATAL("Octave script [%s] failed !", A); }
 
 #endif // MUNIT_HPP

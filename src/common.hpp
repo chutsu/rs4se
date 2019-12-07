@@ -14,9 +14,20 @@
   (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #define FATAL(M, ...)                                                          \
-  fprintf(stdout, "\033[31m[FATAL] [%s:%d] " M "\033[0m\n", __FILENAME__,      \
-          __LINE__, ##__VA_ARGS__);                                            \
+  fprintf(stdout,                                                              \
+          "\033[31m[FATAL] [%s:%d] " M "\033[0m\n",                            \
+          __FILENAME__,                                                        \
+          __LINE__,                                                            \
+          ##__VA_ARGS__);                                                      \
   exit(-1)
+
+#define LOG_WARN(M, ...)                                                       \
+  fprintf(stdout, "\033[33m[WARN] " M "\033[0m\n", ##__VA_ARGS__)
+
+#define UNUSED(expr)                                                           \
+  do {                                                                         \
+    (void) (expr);                                                             \
+  } while (0)
 
 #define ROS_PARAM(NH, X, Y)                                                    \
   if (NH.getParam(X, Y) == false) {                                            \
@@ -25,9 +36,7 @@
   }
 
 #define ROS_OPTIONAL_PARAM(NH, X, Y, DEFAULT_VALUE)                            \
-  if (NH.getParam(X, Y) == false) {                                            \
-    Y = DEFAULT_VALUE;                                                         \
-  }
+  if (NH.getParam(X, Y) == false) { Y = DEFAULT_VALUE; }
 
 static inline uint64_t str2ts(const std::string &s) {
   uint64_t ts = 0;
@@ -47,11 +56,13 @@ static inline uint64_t str2ts(const std::string &s) {
   return ts;
 }
 
-static cv::Mat frame2cvmat(const rs2::frame &frame, const int width,
-                           const int height, const int format) {
+static cv::Mat frame2cvmat(const rs2::frame &frame,
+                           const int width,
+                           const int height,
+                           const int format) {
   const cv::Size size(width, height);
   const auto stride = cv::Mat::AUTO_STEP;
-  const cv::Mat cv_frame(size, format, (void *)frame.get_data(), stride);
+  const cv::Mat cv_frame(size, format, (void *) frame.get_data(), stride);
   return cv_frame;
 }
 
@@ -149,10 +160,11 @@ create_vec3_msg(const rs2::motion_frame &f, const std::string &frame_id) {
 
 static sensor_msgs::Imu create_imu_msg(const double ts,
                                        const Eigen::Vector3d &gyro,
-                                       const Eigen::Vector3d &accel) {
+                                       const Eigen::Vector3d &accel,
+                                       const std::string &frame_id) {
   sensor_msgs::Imu msg;
 
-  msg.header.frame_id = "imu0";
+  msg.header.frame_id = frame_id;
   msg.header.stamp = ros::Time{ts};
   msg.angular_velocity.x = gyro(0);
   msg.angular_velocity.y = gyro(1);
@@ -172,7 +184,5 @@ static void debug_imshow(const cv::Mat &frame_left,
   cv::namedWindow("Stereo Module", cv::WINDOW_AUTOSIZE);
   cv::imshow("Stereo Module", frame);
 
-  if (cv::waitKey(1) == 'q') {
-    exit(-1);
-  }
+  if (cv::waitKey(1) == 'q') { exit(-1); }
 }

@@ -1,7 +1,8 @@
 #pragma once
 #include "common.hpp"
 
-template <typename T> T lerp(const T &a, const T &b, const double t) {
+template <typename T>
+T lerp(const T &a, const T &b, const double t) {
   return a * (1.0 - t) + b * t;
 }
 
@@ -19,9 +20,7 @@ public:
   lerp_buf_t() {}
 
   bool ready() {
-    if (buf_ts_.size() >= 3 && buf_type_.back() == "A") {
-      return true;
-    }
+    if (buf_ts_.size() >= 3 && buf_type_.back() == "A") { return true; }
     return false;
   }
 
@@ -47,7 +46,11 @@ public:
       const double x = data(0);
       const double y = data(1);
       const double z = data(1);
-      printf("[%.6f] - [%s] - (%.2f, %.2f, %.2f)\n", ts, dtype.c_str(), x, y,
+      printf("[%.6f] - [%s] - (%.2f, %.2f, %.2f)\n",
+             ts,
+             dtype.c_str(),
+             x,
+             y,
              z);
     }
   }
@@ -120,7 +123,8 @@ public:
     buf_data_.push_back(data);
   }
 
-  void publishIMUMessages(const ros::Publisher &imu_pub) {
+  void publishIMUMessages(const ros::Publisher &imu_pub,
+                          const std::string &frame_id) {
     while (lerped_gyro_ts_.size()) {
       // Timestamp
       const auto ts = lerped_gyro_ts_.front();
@@ -136,7 +140,7 @@ public:
       lerped_gyro_data_.pop_front();
 
       // Publish imu messages
-      const auto msg = create_imu_msg(ts, gyro, accel);
+      const auto msg = create_imu_msg(ts, gyro, accel, frame_id);
       imu_pub.publish(msg);
     }
 

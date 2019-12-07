@@ -1,5 +1,12 @@
 #include "munit.hpp"
 #include "rs.hpp"
+#include "lerp.hpp"
+
+#include <chrono>
+#include <deque>
+#include <mutex>
+#include <string>
+#include <thread>
 
 int test_rs2_connect() {
   rs2::device device = rs2_connect();
@@ -14,37 +21,81 @@ int test_rs2_list_sensors() {
   return 0;
 }
 
-int test_rs2_get_sensors() {
+int test_rs2_get_sensor() {
   const auto device = rs2_connect();
 
   rs2::sensor sensor;
-  MU_CHECK(rs2_get_sensors(device, "Stereo Module", sensor) == 0);
+  MU_CHECK(rs2_get_sensor(device, "Stereo Module", sensor) == 0);
 }
 
 int test_rs2_motion_module() {
-  rs2::device device = rs2_connect();
-  rs_motion_module_t motion{device};
+  const rs2::device device = rs2_connect();
+  const rs_motion_module_config_t config;
 
-  motion.listStreamProfiles();
-  motion.setStreamProfiles(250, 400);
+  bool keep_running = true;
+  int frame_counter = 0;
+  rs_motion_module_t motion(device, config, [&](const rs2::frame &frame) {
+    auto motion = frame.as<rs2::motion_frame>();
+    if (motion && motion.get_profile().stream_type() == RS2_STREAM_GYRO &&
+        motion.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F) {
+      double ts = motion.get_timestamp();
+      rs2_vector gyro_data = motion.get_motion_data();
+      std::cout << "G\t" << gyro_data << std::endl;
+    }
+
+    if (motion && motion.get_profile().stream_type() == RS2_STREAM_ACCEL &&
+        motion.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F) {
+      double ts = motion.get_timestamp();
+      rs2_vector accel_data = motion.get_motion_data();
+      std::cout << "A\t" << accel_data << std::endl;
+    }
+
+    frame_counter++;
+    if (frame_counter >= 10) { keep_running = false; }
+  });
+
+  // Block until frame counter threadhold is reached
+  while (keep_running) {
+    sleep(0.1);
+  }
 
   return 0;
 }
 
-int test_rs2_stereo_module() {
-  rs2::device device = rs2_connect();
-  rs_stereo_module_t stereo{device};
+int test_rs2_rgbd_module() {
+  const rs2::device device = rs2_connect();
+  rs_rgbd_module_config_t config;
 
-  stereo.listStreamProfiles();
+  bool keep_running = true;
+  int frame_counter = 0;
+  rs_rgbd_module_t rgbd(device, config, [&](const rs2::frame &frame) {
+    if (rs2::frameset fs = frame.as<rs2::frameset>()) {
+      // Show rgbd ir image
+      const auto ir_left = fs.get_infrared_frame(1);
+      const auto ir_right = fs.get_infrared_frame(2);
+      const int width = ir_left.get_width();
+      const int height = ir_left.get_height();
+      cv::Mat frame_left = frame2cvmat(ir_left, width, height, CV_8UC1);
+      cv::Mat frame_right = frame2cvmat(ir_right, width, height, CV_8UC1);
+      debug_imshow(frame_left, frame_right);
 
-  return 0;
-}
+      // Show depth image
+      if (config.enable_depth) {
+        const auto depth_frame = fs.get_depth_frame();
+        cv::Mat depth = frame2cvmat(depth_frame, width, height, CV_16UC1);
+        cv::imshow("Depth", depth);
+        cv::waitKey(1);
+      }
 
-int test_rs2_rgb_module() {
-  rs2::device device = rs2_connect();
-  rs_rgb_module_t rgb{device};
+      frame_counter++;
+      if (frame_counter >= 100) { keep_running = false; }
+    }
+  });
 
-  rgb.listStreamProfiles();
+  // Block until frame counter threadhold is reached
+  while (keep_running) {
+    sleep(0.1);
+  }
 
   return 0;
 }
@@ -81,26 +132,25 @@ int test_ts_correction() {
   return 0;
 }
 
-int test_vframe2ts() {
-  rs2::device device = rs2_connect();
-  rs_stereo_module_t stereo{device};
-
-  const auto fs = stereo.waitForFrame();
-  const auto frame = fs[0];
-  const auto vf = frame.as<rs2::video_frame>();
-  printf("corrected timestamp: %zu\n\n", vframe2ts(vf));
-
-  return 0;
-}
+// int test_vframe2ts() {
+//   rs2::device device = rs2_connect();
+//   rs_stereo_module_t stereo{device};
+//
+//   const auto fs = stereo.waitForFrame();
+//   const auto frame = fs[0];
+//   const auto vf = frame.as<rs2::video_frame>();
+//   printf("corrected timestamp: %zu\n\n", vframe2ts(vf));
+//
+//   return 0;
+// }
 
 void test_suite() {
   MU_ADD_TEST(test_rs2_connect);
   MU_ADD_TEST(test_rs2_list_sensors);
-  MU_ADD_TEST(test_rs2_get_sensors);
+  MU_ADD_TEST(test_rs2_get_sensor);
   MU_ADD_TEST(test_rs2_motion_module);
-  MU_ADD_TEST(test_rs2_stereo_module);
-  MU_ADD_TEST(test_rs2_rgb_module);
-  // MU_ADD_TEST(test_ts_correction);
+  MU_ADD_TEST(test_rs2_rgbd_module);
+  MU_ADD_TEST(test_ts_correction);
   // MU_ADD_TEST(test_vframe2ts);
 }
 

@@ -7,18 +7,12 @@ data for SLAM.
 In particular this driver makes the following assertions:
 
 - All camera frames (IR and RGB) timestamps are captured at mid-exposure
+- Depth is aligned to RGB camera
 - Accelerometer measurements are lerped against the gyroscope
   measurements to provide "synchronized" `sensor_msgs::Imu` messages.
   e.g. If gyroscope is 400Hz and the accelerometer is 250Hz, the accelerometer
   will be lerped against the gyroscope to provide synchronized 400Hz
   measurements.
-
-
-## TODO
-
-  - Align depth frames `~/stereo/depth0/image` to RGB camera.
-  - More rigorous unit tests
-  - GUI to change parameters on the fly
 
 
 ## Install
@@ -40,13 +34,13 @@ you patch your OS kernel following the prerequisit instructions detailed
 The above launch file will launch the `intel_d435i` ros node and publish the
 following topics:
 
-    ~/rgb/camera0/image     # RGB camera frames
-    ~/stereo/camera0/image  # Infrared camera (left) frames
-    ~/stereo/camera1/image  # Infrared camera (right) frames
-    ~/stereo/depth0/image   # Depth image (if enabled) aligned to /stereo/camera0
-    ~/motion/imu0           # "Synchronized" accel and gyro data via lerp
-    ~/motion/accel0         # Accelerometer measurements
-    ~/motion/gyro0          # Gyroscope measurements
+    /rs/rgb0/image     # RGB camera frames
+    /rs/ir0/image      # Infrared camera (left) frames
+    /rs/ir1/image      # Infrared camera (right) frames
+    /rs/depth0/image   # Depth image (if enabled) aligned to /stereo/camera0
+    /rs/imu0/data      # "Synchronized" accel and gyro data via lerp
+    /rs/accel0/data    # Accelerometer measurements
+    /rs/gyro0/data     # Gyroscope measurements
 
 
 ## Troubleshoot
