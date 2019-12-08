@@ -19,7 +19,6 @@ CATKIN_PACKAGE(LIBRARIES ${PROJECT_NAME})
 INCLUDE_DIRECTORIES(${catkin_INCLUDE_DIRS}
                     ${realsense2_INCLUDE_DIR})
 
-
 # EXECUTABLES
 SET(DEPS
   ${realsense2_LIBRARY}
@@ -30,5 +29,5 @@ SET(DEPS
 ADD_EXECUTABLE(intel_d435i src/intel_d435i.cpp)
 TARGET_LINK_LIBRARIES(intel_d435i ${DEPS})
 
-ADD_EXECUTABLE(test_rs src/test_rs.cpp)
-TARGET_LINK_LIBRARIES(test_rs ${DEPS})
+ADD_EXECUTABLE(test_rs4se src/test_rs4se.cpp)
+TARGET_LINK_LIBRARIES(test_rs4se ${DEPS})

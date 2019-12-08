@@ -1,10 +1,40 @@
 #pragma once
 #include <iostream>
 #include <string.h>
+#include <unistd.h>
 
+#include <Eigen/Dense>
+
+#include <opencv2/opencv.hpp>
 #include <librealsense2/rs.hpp>
 
-#include "common.hpp"
+#define __FILENAME__                                                           \
+  (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+#define FATAL(M, ...)                                                          \
+  fprintf(stdout,                                                              \
+          "\033[31m[FATAL] [%s:%d] " M "\033[0m\n",                            \
+          __FILENAME__,                                                        \
+          __LINE__,                                                            \
+          ##__VA_ARGS__);                                                      \
+  exit(-1)
+
+#define LOG_WARN(M, ...)                                                       \
+  fprintf(stdout, "\033[33m[WARN] " M "\033[0m\n", ##__VA_ARGS__)
+
+#define UNUSED(expr)                                                           \
+  do {                                                                         \
+    (void) (expr);                                                             \
+  } while (0)
+
+#define ROS_PARAM(NH, X, Y)                                                    \
+  if (NH.getParam(X, Y) == false) {                                            \
+    std::cerr << "Failed to get ROS param [" << X << "]!" << std::endl;        \
+    exit(-1);                                                                  \
+  }
+
+#define ROS_OPTIONAL_PARAM(NH, X, Y, DEFAULT_VALUE)                            \
+  if (NH.getParam(X, Y) == false) { Y = DEFAULT_VALUE; }
 
 static void print_rsframe_timestamps(const rs2::frame &frame) {
   const auto ts_ms = frame.get_timestamp();
@@ -29,6 +59,201 @@ static void print_rsframe_timestamps(const rs2::frame &frame) {
   default: printf("Not a valid time domain!\n"); break;
   }
 }
+
+static inline uint64_t str2ts(const std::string &s) {
+  uint64_t ts = 0;
+  size_t end = s.length() - 1;
+
+  int idx = 0;
+  for (int i = 0; i <= end; i++) {
+    const char c = s.at(end - i);
+
+    if (c != '.') {
+      const uint64_t base = static_cast<uint64_t>(pow(10, idx));
+      ts += std::atoi(&c) * base;
+      idx++;
+    }
+  }
+
+  return ts;
+}
+
+static cv::Mat frame2cvmat(const rs2::frame &frame,
+                           const int width,
+                           const int height,
+                           const int format) {
+  const cv::Size size(width, height);
+  const auto stride = cv::Mat::AUTO_STEP;
+  const cv::Mat cv_frame(size, format, (void *) frame.get_data(), stride);
+  return cv_frame;
+}
+
+static uint64_t vframe2ts(const rs2::video_frame &vf) {
+  // Calculate half of the exposure time
+  // -- Frame metadata timestamp
+  const auto frame_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
+  const auto frame_ts_us = vf.get_frame_metadata(frame_meta_key);
+  const auto frame_ts_ns = static_cast<uint64_t>(frame_ts_us) * 1000;
+  // -- Sensor metadata timestamp
+  const auto sensor_meta_key = RS2_FRAME_METADATA_SENSOR_TIMESTAMP;
+  const auto sensor_ts_us = vf.get_frame_metadata(sensor_meta_key);
+  const auto sensor_ts_ns = static_cast<uint64_t>(sensor_ts_us) * 1000;
+  // -- Half exposure time
+  const auto half_exposure_time_ns = frame_ts_ns - sensor_ts_ns;
+
+  // Calculate corrected timestamp
+  const auto ts_ms = vf.get_timestamp();
+  const auto ts_ns = str2ts(std::to_string(ts_ms));
+  const auto ts_corrected_ns = ts_ns - half_exposure_time_ns;
+
+  return static_cast<uint64_t>(ts_corrected_ns);
+}
+
+static void debug_imshow(const cv::Mat &frame_left,
+                         const cv::Mat &frame_right) {
+  // Display in a GUI
+  cv::Mat frame;
+  cv::hconcat(frame_left, frame_right, frame);
+  cv::namedWindow("Stereo Module", cv::WINDOW_AUTOSIZE);
+  cv::imshow("Stereo Module", frame);
+
+  if (cv::waitKey(1) == 'q') { exit(-1); }
+}
+
+template <typename T>
+T lerp(const T &a, const T &b, const double t) {
+  return a * (1.0 - t) + b * t;
+}
+
+struct lerp_buf_t {
+  std::deque<std::string> buf_type_;
+  std::deque<double> buf_ts_;
+  std::deque<Eigen::Vector3d> buf_data_;
+
+  std::deque<double> lerped_gyro_ts_;
+  std::deque<Eigen::Vector3d> lerped_gyro_data_;
+  std::deque<double> lerped_accel_ts_;
+  std::deque<Eigen::Vector3d> lerped_accel_data_;
+
+  lerp_buf_t() {}
+
+  bool ready() {
+    if (buf_ts_.size() >= 3 && buf_type_.back() == "A") { return true; }
+    return false;
+  }
+
+  void addAccel(const double ts_s,
+                const double ax,
+                const double ay,
+                const double az) {
+    buf_type_.push_back("A");
+    buf_ts_.push_back(ts_s);
+    buf_data_.emplace_back(ax, ay, az);
+  }
+
+  void addGyro(const double ts_s,
+               const double wx,
+               const double wy,
+               const double wz) {
+    if (buf_type_.size() && buf_type_.front() == "A") {
+      buf_type_.push_back("G");
+      buf_ts_.push_back(ts_s);
+      buf_data_.emplace_back(wx, wy, wz);
+    }
+  }
+
+  void print() {
+    for (size_t i = 0; i < buf_ts_.size(); i++) {
+      const double ts = buf_ts_.at(i);
+      const std::string dtype = buf_type_.at(i);
+      const Eigen::Vector3d data = buf_data_.at(i);
+      const double x = data(0);
+      const double y = data(1);
+      const double z = data(1);
+      printf("[%.6f] - [%s] - (%.2f, %.2f, %.2f)\n",
+             ts,
+             dtype.c_str(),
+             x,
+             y,
+             z);
+    }
+  }
+
+  void interpolate() {
+    // Lerp data
+    double t0 = 0;
+    Eigen::Vector3d d0;
+    double t1 = 0;
+    Eigen::Vector3d d1;
+    bool t0_set = false;
+
+    std::deque<double> lerp_ts;
+    std::deque<Eigen::Vector3d> lerp_data;
+
+    double ts = 0.0;
+    std::string dtype;
+    Eigen::Vector3d data;
+
+    while (buf_ts_.size()) {
+      // Timestamp
+      ts = buf_ts_.front();
+      buf_ts_.pop_front();
+
+      // Datatype
+      dtype = buf_type_.front();
+      buf_type_.pop_front();
+
+      // Data
+      data = buf_data_.front();
+      buf_data_.pop_front();
+
+      // Lerp
+      if (t0_set == false && dtype == "A") {
+        t0 = ts;
+        d0 = data;
+        t0_set = true;
+
+      } else if (t0_set && dtype == "A") {
+        t1 = ts;
+        d1 = data;
+
+        while (lerp_ts.size()) {
+          const double lts = lerp_ts.front();
+          const Eigen::Vector3d ldata = lerp_data.front();
+          const double dt = t1 - t0;
+          const double alpha = (lts - t0) / dt;
+
+          lerped_accel_ts_.push_back(lts);
+          lerped_accel_data_.push_back(lerp(d0, d1, alpha));
+
+          lerped_gyro_ts_.push_back(lts);
+          lerped_gyro_data_.push_back(ldata);
+
+          lerp_ts.pop_front();
+          lerp_data.pop_front();
+        }
+
+        t0 = t1;
+        d0 = d1;
+
+      } else if (t0_set && ts >= t0 && dtype == "G") {
+        lerp_ts.push_back(ts);
+        lerp_data.push_back(data);
+      }
+    }
+
+    buf_ts_.push_back(ts);
+    buf_type_.push_back(dtype);
+    buf_data_.push_back(data);
+  }
+
+  void clear() {
+    lerped_gyro_ts_.clear();
+    lerped_gyro_data_.clear();
+    lerped_accel_ts_.clear();
+    lerped_accel_data_.clear();
+  }
+};
 
 rs2::device rs2_connect() {
   rs2::context ctx;

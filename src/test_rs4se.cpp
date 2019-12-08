@@ -1,12 +1,5 @@
 #include "munit.hpp"
-#include "rs.hpp"
-#include "lerp.hpp"
-
-#include <chrono>
-#include <deque>
-#include <mutex>
-#include <string>
-#include <thread>
+#include "rs4se.hpp"
 
 int test_rs2_connect() {
   rs2::device device = rs2_connect();
