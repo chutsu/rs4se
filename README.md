@@ -37,7 +37,7 @@ following topics:
     /rs/rgb0/image     # RGB camera frames
     /rs/ir0/image      # Infrared camera (left) frames
     /rs/ir1/image      # Infrared camera (right) frames
-    /rs/depth0/image   # Depth image (if enabled) aligned to /stereo/camera0
+    /rs/depth0/image   # Depth image (if enabled) aligned to /rs/rgb0/image
     /rs/imu0/data      # "Synchronized" accel and gyro data via lerp
     /rs/accel0/data    # Accelerometer measurements
     /rs/gyro0/data     # Gyroscope measurements
