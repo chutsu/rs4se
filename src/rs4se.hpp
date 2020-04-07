@@ -36,26 +36,38 @@
 #define ROS_OPTIONAL_PARAM(NH, X, Y, DEFAULT_VALUE)                            \
   if (NH.getParam(X, Y) == false) { Y = DEFAULT_VALUE; }
 
-static void print_rsframe_timestamps(const rs2::frame &frame) {
+void print_rsframe_timestamps(const rs2::frame &frame) {
   const auto ts_ms = frame.get_timestamp();
   const auto frame_ts_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
   const auto frame_ts_us = frame.get_frame_metadata(frame_ts_meta_key);
   const auto sensor_ts_meta_key = RS2_FRAME_METADATA_SENSOR_TIMESTAMP;
   const auto sensor_ts_us = frame.get_frame_metadata(sensor_ts_meta_key);
 
-  printf("metadata frame timestamp [s]: %.6f\n", frame_ts_us * 1e-6);
-  printf("metadata frame timestamp [us]: %lld\n", frame_ts_us);
-  printf("metadata sensor timestamp [s]: %.6f\n", sensor_ts_us * 1e-6);
-  printf("metadata sensor timestamp [us]: %lld\n", sensor_ts_us);
+  printf("RS2_FRAME_METADATA_FRAME_TIMESTAMP [us]:  %lld\n", frame_ts_us);
+  printf("RS2_FRAME_METADATA_SENSOR_TIMESTAMP [us]: %lld\n", sensor_ts_us);
+  printf("RS2_FRAME_METADATA_FRAME_TIMESTAMP [s]:   %.6f\n",
+         frame_ts_us * 1e-6);
+  printf("RS2_FRAME_METADATA_SENSOR_TIMESTAMP [s]:  %.6f\n",
+         sensor_ts_us * 1e-6);
 
   switch (frame.get_frame_timestamp_domain()) {
   case RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK:
-    printf("timestamp domain: hardware clock!\n");
+    printf("Timestamp domain: hardware clock!\n");
+    printf("Measured in relation to the camera clock\n");
     break;
   case RS2_TIMESTAMP_DOMAIN_SYSTEM_TIME:
-    printf("timestamp domain: system time!\n");
+    printf("Timestamp domain: system time!\n");
+    printf("Measured in relation to the OS system clock\n");
     break;
-  case RS2_TIMESTAMP_DOMAIN_COUNT: printf("Not a valid input!\n"); break;
+  case RS2_TIMESTAMP_DOMAIN_GLOBAL_TIME:
+    printf("Timestamp domain: global time!\n");
+    printf("Measured in relation to the camera clock and converted to\n");
+    printf("OS system clock by constantly measure the difference\n");
+    break;
+  case RS2_TIMESTAMP_DOMAIN_COUNT:
+    printf("Timestamp domain: count! Not a valid domain\n");
+    printf("Not a valid input: intended to be used in for-loops!\n");
+    break;
   default: printf("Not a valid time domain!\n"); break;
   }
 }

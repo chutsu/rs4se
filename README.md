@@ -6,8 +6,8 @@ data for SLAM.
 
 In particular this driver makes the following assertions:
 
-- All camera frames (IR and RGB) timestamps are captured at mid-exposure
-- Depth is aligned to RGB camera
+- All camera frames (IR and RGB) timestamps are captured at mid-exposure.
+- Depth is aligned to RGB camera.
 - Accelerometer measurements are lerped against the gyroscope
   measurements to provide "synchronized" `sensor_msgs::Imu` messages.
   e.g. If gyroscope is 400Hz and the accelerometer is 250Hz, the accelerometer

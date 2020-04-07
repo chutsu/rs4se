@@ -111,40 +111,49 @@ int test_ts_correction() {
   printf("frame timestamp [ns]:           %f\n", ts_ms * 1e6);
   printf("converted frame timestamp [ns]: %zu\n\n", ts_ns);
 
-  printf("frame timestamp [us]:     %lld\n", frame_ts_us);
-  printf("sensor timestamp [us]:    %lld\n", sensor_ts_us);
-  printf("frame timestamp [ns]:  %zu\n", frame_ts_ns);
-  printf("sensor timestamp [ns]: %zu\n", sensor_ts_ns);
-  printf("half exposure time [ns]:   %zu\n\n", half_exposure_time_ns);
+  printf("frame timestamp [us]:    %lld\n", frame_ts_us);
+  printf("sensor timestamp [us]:   %lld\n", sensor_ts_us);
+  printf("frame timestamp [ns]:    %zu\n", frame_ts_ns);
+  printf("sensor timestamp [ns]:   %zu\n", sensor_ts_ns);
+  printf("half exposure time [ns]: %zu\n\n", half_exposure_time_ns);
 
   printf("converted frame timestamp [ns]: %zu\n", ts_ns);
-  printf("half exposure time [ns]:                   %zu\n",
-         half_exposure_time_ns);
+  printf("half exposure time [ns]:        %zu\n", half_exposure_time_ns);
   printf("corrected timestamp [ns]:       %zu\n\n", ts_corrected_ns);
 
   return 0;
 }
 
-// int test_vframe2ts() {
-//   rs2::device device = rs2_connect();
-//   rs_stereo_module_t stereo{device};
-//
-//   const auto fs = stereo.waitForFrame();
-//   const auto frame = fs[0];
-//   const auto vf = frame.as<rs2::video_frame>();
-//   printf("corrected timestamp: %zu\n\n", vframe2ts(vf));
-//
-//   return 0;
-// }
+int test_vframe2ts() {
+  rs2::device device = rs2_connect();
+  rs_rgbd_module_config_t config;
+
+  bool keep_running = true;
+  auto rgbd_cb = [&](const rs2::frame &frame) {
+    if (rs2::frameset fs = frame.as<rs2::frameset>()) {
+      const auto ir_left = fs.get_infrared_frame(1);
+      if (keep_running) { print_rsframe_timestamps(ir_left); }
+      keep_running = false;
+    }
+  };
+  rs_rgbd_module_t rgbd{device, config, rgbd_cb};
+
+  // Block until frame counter threadhold is reached
+  while (keep_running) {
+    sleep(0.1);
+  }
+
+  return 0;
+}
 
 void test_suite() {
-  MU_ADD_TEST(test_rs2_connect);
-  MU_ADD_TEST(test_rs2_list_sensors);
-  MU_ADD_TEST(test_rs2_get_sensor);
-  MU_ADD_TEST(test_rs2_motion_module);
-  MU_ADD_TEST(test_rs2_rgbd_module);
-  MU_ADD_TEST(test_ts_correction);
-  // MU_ADD_TEST(test_vframe2ts);
+  // MU_ADD_TEST(test_rs2_connect);
+  // MU_ADD_TEST(test_rs2_list_sensors);
+  // MU_ADD_TEST(test_rs2_get_sensor);
+  // MU_ADD_TEST(test_rs2_motion_module);
+  // MU_ADD_TEST(test_rs2_rgbd_module);
+  // MU_ADD_TEST(test_ts_correction);
+  MU_ADD_TEST(test_vframe2ts);
 }
 
 MU_RUN_TESTS(test_suite);
