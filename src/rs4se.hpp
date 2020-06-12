@@ -270,7 +270,6 @@ struct lerp_buf_t {
 rs2::device rs2_connect() {
   rs2::context ctx;
   rs2::device_list devices = ctx.query_devices();
-  rs2::device device;
   if (devices.size() == 0) {
     FATAL("No device connected, please connect a RealSense device");
   }

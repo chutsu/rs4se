@@ -146,6 +146,59 @@ int test_vframe2ts() {
   return 0;
 }
 
+int test_sandbox() {
+  // Connect to device
+  rs2::context ctx;
+  rs2::device_list devices = ctx.query_devices();
+  if (devices.size() == 0) {
+    FATAL("No device connected, please connect a RealSense device");
+  }
+  rs2::device device = devices[0];
+
+  // Get depth sensor
+  auto depth_sensor = device.first<rs2::depth_sensor>();
+
+  // Setup option
+  depth_sensor.set_option(RS2_OPTION_EXPOSURE, 40000.0);
+
+  // Configure stream
+  rs2::config cfg;
+  cfg.enable_stream(RS2_STREAM_DEPTH);
+  cfg.enable_stream(RS2_STREAM_INFRARED, 1);
+  cfg.enable_stream(RS2_STREAM_INFRARED, 2);
+
+  // Start pipeline
+  rs2::pipeline pipe;
+  pipe.start(cfg, [&](const rs2::frame &frame) {
+    if (rs2::frameset fs = frame.as<rs2::frameset>()) {
+      // Show rgbd ir image
+      const auto ir_left = fs.get_infrared_frame(1);
+      const auto ir_right = fs.get_infrared_frame(2);
+      const int width = ir_left.get_width();
+      const int height = ir_left.get_height();
+      cv::Mat frame_left = frame2cvmat(ir_left, width, height, CV_8UC1);
+      cv::Mat frame_right = frame2cvmat(ir_right, width, height, CV_8UC1);
+
+      // Show stereo image
+      cv::Mat frame;
+      cv::hconcat(frame_left, frame_right, frame);
+      cv::namedWindow("Stereo Module", cv::WINDOW_AUTOSIZE);
+      cv::imshow("Stereo Module", frame);
+
+      // Show depth image
+      const auto depth_frame = fs.get_depth_frame();
+      cv::Mat depth = frame2cvmat(depth_frame, width, height, CV_16UC1);
+      cv::imshow("Depth", depth);
+      cv::waitKey(1);
+    }
+  });
+
+  // Block until frame counter threadhold is reached
+  while (true) {
+    sleep(0.1);
+  }
+}
+
 void test_suite() {
   // MU_ADD_TEST(test_rs2_connect);
   // MU_ADD_TEST(test_rs2_list_sensors);
@@ -153,7 +206,8 @@ void test_suite() {
   // MU_ADD_TEST(test_rs2_motion_module);
   // MU_ADD_TEST(test_rs2_rgbd_module);
   // MU_ADD_TEST(test_ts_correction);
-  MU_ADD_TEST(test_vframe2ts);
+  // MU_ADD_TEST(test_vframe2ts);
+  MU_ADD_TEST(test_sandbox);
 }
 
 MU_RUN_TESTS(test_suite);
