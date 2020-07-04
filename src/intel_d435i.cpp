@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <unistd.h>
+#include <thread>
 
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
@@ -243,12 +244,11 @@ struct intel_d435i_node_t {
   }
 
   void stream() {
-    // IMU callback
+    // Callback
     lerp_buf_t lerp_buf;
-    auto motion_cb = [&](const rs2::frame &frame) {
-      const bool enable_motion = motion_config_.enable_motion;
-      const auto mf = frame.as<rs2::motion_frame>();
-      if (enable_motion && mf) {
+    auto cb = [&](const rs2::frame &frame) {
+      // Handle motion frame
+      if (auto mf = frame.as<rs2::motion_frame>()) {
         if (mf && mf.get_profile().stream_type() == RS2_STREAM_ACCEL) {
           publish_accel0_msg(mf);
 
@@ -268,11 +268,10 @@ struct intel_d435i_node_t {
           lerp_buf.interpolate();
           publish_imu0_msg(lerp_buf);
         }
+        return;
       }
-    };
 
-    // RGBD Callback
-    auto rgbd_cb = [&](const rs2::frame &frame) {
+      // Handle camera frames
       if (const auto &fs = frame.as<rs2::frameset>()) {
         // IR0 & IR1
         const bool enable_ir = rgbd_config_.enable_ir;
@@ -298,8 +297,7 @@ struct intel_d435i_node_t {
 
     // Connect and stream
     rs2::device device = rs2_connect();
-    rs_motion_module_t motion_module(device, motion_config_, motion_cb);
-    rs_rgbd_module_t rgbd_module(device, rgbd_config_, rgbd_cb);
+    intel_d435i_t sensor(device, rgbd_config_, motion_config_, cb);
 
     // Pipelines are threads so we need a blocking loop
     signal(SIGINT, signal_handler);

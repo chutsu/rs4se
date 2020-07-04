@@ -159,7 +159,7 @@ int test_sandbox() {
   auto depth_sensor = device.first<rs2::depth_sensor>();
 
   // Setup option
-  depth_sensor.set_option(RS2_OPTION_EXPOSURE, 40000.0);
+  depth_sensor.set_option(RS2_OPTION_EXPOSURE, 100.0);
 
   // Configure stream
   rs2::config cfg;
@@ -200,14 +200,14 @@ int test_sandbox() {
 }
 
 void test_suite() {
-  // MU_ADD_TEST(test_rs2_connect);
-  // MU_ADD_TEST(test_rs2_list_sensors);
-  // MU_ADD_TEST(test_rs2_get_sensor);
-  // MU_ADD_TEST(test_rs2_motion_module);
-  // MU_ADD_TEST(test_rs2_rgbd_module);
+  MU_ADD_TEST(test_rs2_connect);
+  MU_ADD_TEST(test_rs2_list_sensors);
+  MU_ADD_TEST(test_rs2_get_sensor);
+  MU_ADD_TEST(test_rs2_motion_module);
+  MU_ADD_TEST(test_rs2_rgbd_module);
   // MU_ADD_TEST(test_ts_correction);
   // MU_ADD_TEST(test_vframe2ts);
-  MU_ADD_TEST(test_sandbox);
+  // MU_ADD_TEST(test_sandbox);
 }
 
 MU_RUN_TESTS(test_suite);
