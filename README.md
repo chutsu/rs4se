@@ -4,6 +4,9 @@
 `librealsense2` and provide developers with usable visual, inertial and depth
 data for SLAM.
 
+**Important: At the moment this codebase has only been tested with the Intel 
+RealSense D435i**
+
 In particular this driver makes the following assertions:
 
 - All camera frames (IR and RGB) timestamps are captured at mid-exposure.
