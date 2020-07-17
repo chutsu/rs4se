@@ -1,15 +1,11 @@
-name: C/C++ CI
-
+name: ci
 on: [push]
-
 jobs:
-  rs4se:
+  ci:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@master
-
-    - name: Install dependencies
+    - name: install dependencies
       run: make deps
-
-    - name: Build rs4se
-      run: make install
+    - name: build
+      run: make
