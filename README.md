@@ -1,10 +1,14 @@
 # rs4se
 
+<a href="https://github.com/chutsu/rs4se/actions?query=ci">
+  <img src="https://github.com/chutsu/rs4se/workflows/ci/badge.svg">
+</a>
+
 *rs4se* stands for *RealSense for State Estimation*. The goal is to wrap around
 `librealsense2` and provide developers with usable visual, inertial and depth
 data for SLAM.
 
-**Important: At the moment this codebase has only been tested with the Intel 
+**Important: At the moment this codebase has only been tested with the Intel
 RealSense D435i**
 
 In particular this driver makes the following assertions:
