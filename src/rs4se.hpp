@@ -46,18 +46,17 @@
   if (NH.getParam(X, Y) == false) { Y = DEFAULT_VALUE; }
 
 void print_rsframe_timestamps(const rs2::frame &frame) {
-  const auto ts_ms = frame.get_timestamp();
   const auto frame_ts_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
   const auto frame_ts_us = frame.get_frame_metadata(frame_ts_meta_key);
   const auto sensor_ts_meta_key = RS2_FRAME_METADATA_SENSOR_TIMESTAMP;
   const auto sensor_ts_us = frame.get_frame_metadata(sensor_ts_meta_key);
 
+  // clang-format off
   printf("RS2_FRAME_METADATA_FRAME_TIMESTAMP [us]:  %lld\n", frame_ts_us);
   printf("RS2_FRAME_METADATA_SENSOR_TIMESTAMP [us]: %lld\n", sensor_ts_us);
-  printf("RS2_FRAME_METADATA_FRAME_TIMESTAMP [s]:   %.6f\n",
-         frame_ts_us * 1e-6);
-  printf("RS2_FRAME_METADATA_SENSOR_TIMESTAMP [s]:  %.6f\n",
-         sensor_ts_us * 1e-6);
+  printf("RS2_FRAME_METADATA_FRAME_TIMESTAMP [s]:   %.6f\n", frame_ts_us * 1e-6);
+  printf("RS2_FRAME_METADATA_SENSOR_TIMESTAMP [s]:  %.6f\n", sensor_ts_us * 1e-6);
+  // clang-format on
 
   switch (frame.get_frame_timestamp_domain()) {
   case RS2_TIMESTAMP_DOMAIN_HARDWARE_CLOCK:
@@ -143,7 +142,7 @@ static cv::Mat frame2cvmat(const rs2::frame &frame,
   return cv_frame;
 }
 
-static uint64_t vframe2ts(const rs2::video_frame &vf) {
+uint64_t vframe2ts(const rs2::video_frame &vf) {
   // Calculate half of the exposure time
   // -- Frame metadata timestamp
   const auto frame_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
@@ -164,8 +163,7 @@ static uint64_t vframe2ts(const rs2::video_frame &vf) {
   return static_cast<uint64_t>(ts_corrected_ns);
 }
 
-static void debug_imshow(const cv::Mat &frame_left,
-                         const cv::Mat &frame_right) {
+void debug_imshow(const cv::Mat &frame_left, const cv::Mat &frame_right) {
   // Display in a GUI
   cv::Mat frame;
   cv::hconcat(frame_left, frame_right, frame);
