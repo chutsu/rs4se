@@ -13,3 +13,9 @@ rs4se:
 	@mkdir -p ${CATKIN_WS}/src
 	@cd ${CATKIN_WS}/src && ln -sf ${PROJ_PATH} . \
 		&& . /opt/ros/melodic/setup.sh && cd .. && catkin build
+
+/usr/local/src/librealsense:
+	@git clone git@github.com:IntelRealSense/librealsense.git
+
+patch_kernel: /usr/local/src/librealsense
+	@cd /usr/local/src/librealsense && ./scripts/patch-realsense-ubuntu-lts.sh
