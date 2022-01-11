@@ -1,11 +1,18 @@
 #include "munit.hpp"
 #include "rs4se.hpp"
 
+int test_str2ts() {
+  const std::string ts_str = "1403636579913555456";
+  const uint64_t ts = str2ts(ts_str);
+  printf("ts [std::string]: %s\n", ts_str.c_str());
+  printf("ts [uint64_t]   : %ld\n", ts);
+  return 0;
+}
+
 int test_rs2_connect() {
   rs2::device device = rs2_connect();
   const auto fm_ver = device.get_info(RS2_CAMERA_INFO_FIRMWARE_VERSION);
   printf("Firmware Version: %s\n", fm_ver);
-
   return 0;
 }
 
@@ -71,6 +78,15 @@ int test_rs2_rgbd_module() {
       cv::Mat frame_left = frame2cvmat(ir_left, width, height, CV_8UC1);
       cv::Mat frame_right = frame2cvmat(ir_right, width, height, CV_8UC1);
       debug_imshow(frame_left, frame_right);
+
+      const auto rgb = fs.get_color_frame();
+      if (config.enable_rgb && rgb) {
+        const int width = rgb.get_width();
+        const int height = rgb.get_height();
+        cv::Mat cv_frame = frame2cvmat(rgb, width, height, CV_8UC3);
+        cv::imshow("RGB", cv_frame);
+        cv::waitKey(1);
+      }
 
       // Show depth image
       if (config.enable_depth) {
@@ -168,6 +184,7 @@ int test_sandbox() {
   cfg.enable_stream(RS2_STREAM_INFRARED, 2);
 
   // Start pipeline
+  bool keep_running = true;
   rs2::pipeline pipe;
   pipe.start(cfg, [&](const rs2::frame &frame) {
     if (rs2::frameset fs = frame.as<rs2::frameset>()) {
@@ -189,22 +206,26 @@ int test_sandbox() {
       const auto depth_frame = fs.get_depth_frame();
       cv::Mat depth = frame2cvmat(depth_frame, width, height, CV_16UC1);
       cv::imshow("Depth", depth);
-      cv::waitKey(1);
+
+      // User input
+      auto key = cv::waitKey(1);
+      if (key == 27 || key == 'q') { keep_running = false; }
     }
   });
 
   // Block until frame counter threadhold is reached
-  while (true) {
+  while (keep_running) {
     sleep(0.1);
   }
 }
 
 void test_suite() {
+  MU_ADD_TEST(test_str2ts);
   MU_ADD_TEST(test_rs2_connect);
   MU_ADD_TEST(test_rs2_list_sensors);
   MU_ADD_TEST(test_rs2_get_sensor);
   MU_ADD_TEST(test_rs2_motion_module);
-  MU_ADD_TEST(test_rs2_rgbd_module);
+  // MU_ADD_TEST(test_rs2_rgbd_module);
   // MU_ADD_TEST(test_ts_correction);
   // MU_ADD_TEST(test_vframe2ts);
   // MU_ADD_TEST(test_sandbox);
