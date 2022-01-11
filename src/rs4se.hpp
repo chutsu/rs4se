@@ -43,7 +43,28 @@
   }
 
 #define ROS_OPTIONAL_PARAM(NH, X, Y, DEFAULT_VALUE)                            \
-  if (NH.getParam(X, Y) == false) { Y = DEFAULT_VALUE; }
+  if (NH.getParam(X, Y) == false) {                                            \
+    Y = DEFAULT_VALUE;                                                         \
+  }
+
+uint64_t str2ts(const std::string &s) {
+  uint64_t ts = 0;
+  int idx = 0;
+
+  for (int i = s.length() - 1; i >= 0; i--) {
+    const char c = s[i];
+
+    if (c != '.') {
+      const uint64_t base = static_cast<uint64_t>(pow(10, idx));
+      ts += (c - '0') * base;
+      //    ^ Convert ascii to integer
+      // Note: character '0' has the ASCII code of 48
+      idx++;
+    }
+  }
+
+  return ts;
+}
 
 void print_rsframe_timestamps(const rs2::frame &frame) {
   const auto frame_ts_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
@@ -113,51 +134,45 @@ void print_rs_exception(const rs2::error &err) {
   FATAL("[RealSense Exception]: %s", err.what());
 }
 
-static inline uint64_t str2ts(const std::string &s) {
-  uint64_t ts = 0;
-  int idx = 0;
-
-  for (int i = s.length() - 1; i >= 0; i--) {
-    const char c = s[i];
-
-    if (c != '.') {
-      const uint64_t base = static_cast<uint64_t>(pow(10, idx));
-      ts += (c - '0') * base;
-      //    ^ Convert ascii to integer
-      // Note: character '0' has the ASCII code of 48
-      idx++;
-    }
-  }
-
-  return ts;
-}
-
-static cv::Mat frame2cvmat(const rs2::frame &frame,
-                           const int width,
-                           const int height,
-                           const int format) {
+cv::Mat frame2cvmat(const rs2::frame &frame,
+                    const int width,
+                    const int height,
+                    const int format) {
   const cv::Size size(width, height);
   const auto stride = cv::Mat::AUTO_STEP;
   const cv::Mat cv_frame(size, format, (void *) frame.get_data(), stride);
   return cv_frame;
 }
 
-uint64_t vframe2ts(const rs2::video_frame &vf) {
-  // Calculate half of the exposure time
-  // -- Frame metadata timestamp
+uint64_t vframe2ts(const rs2::video_frame &vf, const bool correct_ts) {
+  // Correct timestamp?
+  if (correct_ts == false) {
+    const auto ts_ms = vf.get_timestamp();
+    const auto ts_ns = str2ts(std::to_string(ts_ms));
+    return ts_ns;
+  }
+
+  // Frame metadata timestamp
   const auto frame_meta_key = RS2_FRAME_METADATA_FRAME_TIMESTAMP;
+  if (vf.supports_frame_metadata(frame_meta_key) == false) {
+    FATAL("[RS2_FRAME_METADATA_FRAME_TIMESTAMP] Not supported!");
+  }
   const auto frame_ts_us = vf.get_frame_metadata(frame_meta_key);
   const auto frame_ts_ns = static_cast<uint64_t>(frame_ts_us) * 1000;
-  // -- Sensor metadata timestamp
+
+  // Sensor metadata timestamp
   const auto sensor_meta_key = RS2_FRAME_METADATA_SENSOR_TIMESTAMP;
+  if (vf.supports_frame_metadata(sensor_meta_key) == false) {
+    FATAL("[RS2_FRAME_METADATA_SENSOR_TIMESTAMP] Not supported! "
+          "Did you patch the kernel?");
+  }
   const auto sensor_ts_us = vf.get_frame_metadata(sensor_meta_key);
   const auto sensor_ts_ns = static_cast<uint64_t>(sensor_ts_us) * 1000;
-  // -- Half exposure time
-  const auto half_exposure_time_ns = frame_ts_ns - sensor_ts_ns;
 
   // Calculate corrected timestamp
   const auto ts_ms = vf.get_timestamp();
   const auto ts_ns = str2ts(std::to_string(ts_ms));
+  const auto half_exposure_time_ns = frame_ts_ns - sensor_ts_ns;
   const auto ts_corrected_ns = ts_ns - half_exposure_time_ns;
 
   return static_cast<uint64_t>(ts_corrected_ns);
@@ -170,7 +185,9 @@ void debug_imshow(const cv::Mat &frame_left, const cv::Mat &frame_right) {
   cv::namedWindow("Stereo Module", cv::WINDOW_AUTOSIZE);
   cv::imshow("Stereo Module", frame);
 
-  if (cv::waitKey(1) == 'q') { exit(-1); }
+  if (cv::waitKey(1) == 'q') {
+    exit(-1);
+  }
 }
 
 template <typename T>
@@ -188,10 +205,13 @@ struct lerp_buf_t {
   std::deque<double> lerped_accel_ts_;
   std::deque<Eigen::Vector3d> lerped_accel_data_;
 
-  lerp_buf_t() {}
+  lerp_buf_t() {
+  }
 
   bool ready() {
-    if (buf_ts_.size() >= 3 && buf_type_.back() == "A") { return true; }
+    if (buf_ts_.size() >= 3 && buf_type_.back() == "A") {
+      return true;
+    }
     return false;
   }
 
@@ -429,8 +449,9 @@ struct rs_motion_module_t {
 };
 
 struct rs_rgbd_module_config_t {
-  bool global_time = true;
   int sync_size = 300;
+  bool global_time = true;
+  bool correct_ts = true;
   bool enable_rgb = true;
   bool enable_ir = true;
   bool enable_depth = true;
@@ -537,7 +558,13 @@ struct rs_rgbd_module_t {
       try {
         pipe_.start(cfg, cb);
         is_running_ = true;
-      } catch (const rs2::error &err) { print_rs_exception(err); }
+      } catch (const rs2::error &err) {
+        print_rs_exception(err);
+        pipe_.stop();
+      } catch (std::exception &e) {
+        std::cout << e.what() << std::endl;
+        pipe_.stop();
+      }
     }
   }
 
@@ -658,7 +685,9 @@ struct intel_d435i_t {
 
     // Check if device is still connected
     ctx_.set_devices_changed_callback([&](rs2::event_information &info) {
-      if (info.was_removed(device_)) { FATAL("Lost connection to sensor!"); }
+      if (info.was_removed(device_)) {
+        FATAL("Lost connection to sensor!");
+      }
     });
 
     // Start streaming

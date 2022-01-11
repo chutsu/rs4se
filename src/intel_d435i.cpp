@@ -25,16 +25,19 @@ void signal_handler(int sig) {
 std::string ros_node_name(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
     std::string arg(argv[i]);
-    if (arg.find("__name:=") != std::string::npos) { return arg.substr(8); }
+    if (arg.find("__name:=") != std::string::npos) {
+      return arg.substr(8);
+    }
   }
   FATAL("Failed to find node name?");
 }
 
 static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
                                               const std::string &frame_id,
-                                              bool is_color) {
+                                              bool is_color,
+                                              bool mid_exposure_ts) {
   // Form msg stamp
-  const uint64_t ts_ns = vframe2ts(vf);
+  const uint64_t ts_ns = vframe2ts(vf, mid_exposure_ts);
   ros::Time msg_stamp;
   msg_stamp.fromNSec(ts_ns);
 
@@ -49,16 +52,17 @@ static sensor_msgs::ImagePtr create_image_msg(const rs2::video_frame &vf,
   if (is_color) {
     cv::Mat cv_frame = frame2cvmat(vf, width, height, CV_8UC3);
     return cv_bridge::CvImage(header, "rgb8", cv_frame).toImageMsg();
-  } else {
-    cv::Mat cv_frame = frame2cvmat(vf, width, height, CV_8UC1);
-    return cv_bridge::CvImage(header, "mono8", cv_frame).toImageMsg();
   }
+
+  cv::Mat cv_frame = frame2cvmat(vf, width, height, CV_8UC1);
+  return cv_bridge::CvImage(header, "mono8", cv_frame).toImageMsg();
 }
 
 static sensor_msgs::ImagePtr create_depth_msg(const rs2::depth_frame &df,
-                                              const std::string &frame_id) {
+                                              const std::string &frame_id,
+                                              const bool mid_exposure_ts) {
   // Form msg stamp
-  const uint64_t ts_ns = vframe2ts(df);
+  const uint64_t ts_ns = vframe2ts(df, mid_exposure_ts);
   // should work fine since depth_frame is derived from video frame
   ros::Time msg_stamp;
   msg_stamp.fromNSec(ts_ns);
@@ -136,7 +140,9 @@ struct intel_d435i_node_t {
 
     // ROS params
     // -- RGBD
+    // clang-format off
     ROS_PARAM(nh, nn + "/global_time", rgbd_config_.global_time);
+    ROS_PARAM(nh, nn + "/correct_ts", rgbd_config_.correct_ts);
     ROS_PARAM(nh, nn + "/enable_rgb", rgbd_config_.enable_rgb);
     ROS_PARAM(nh, nn + "/enable_ir", rgbd_config_.enable_ir);
     ROS_PARAM(nh, nn + "/enable_depth", rgbd_config_.enable_depth);
@@ -160,6 +166,7 @@ struct intel_d435i_node_t {
     ROS_PARAM(nh, nn + "/enable_motion", motion_config_.enable_motion);
     ROS_PARAM(nh, nn + "/accel_hz", motion_config_.accel_hz);
     ROS_PARAM(nh, nn + "/gyro_hz", motion_config_.gyro_hz);
+    // clang-format on
 
     // Publishers
     const auto rgb0_topic = nn + "/rgb0/image";
@@ -194,19 +201,22 @@ struct intel_d435i_node_t {
 
   void publish_ir_msgs(const rs2::video_frame &ir0,
                        const rs2::video_frame &ir1) {
-    const auto cam0_msg = create_image_msg(ir0, "rs/ir0", false);
-    const auto cam1_msg = create_image_msg(ir1, "rs/ir1", false);
+    const auto correct_ts = rgbd_config_.correct_ts;
+    const auto cam0_msg = create_image_msg(ir0, "rs/ir0", false, correct_ts);
+    const auto cam1_msg = create_image_msg(ir1, "rs/ir1", false, correct_ts);
     ir0_pub_.publish(cam0_msg);
     ir1_pub_.publish(cam1_msg);
   }
 
   void publish_rgb0_msg(const rs2::video_frame &rgb) {
-    const auto msg = create_image_msg(rgb, "rs/rgb0", true);
+    const auto correct_ts = rgbd_config_.correct_ts;
+    const auto msg = create_image_msg(rgb, "rs/rgb0", true, correct_ts);
     rgb0_pub_.publish(msg);
   }
 
   void publish_depth0_msg(const rs2::video_frame &depth) {
-    const auto msg = create_depth_msg(depth, "rs/depth0");
+    const auto correct_ts = rgbd_config_.correct_ts;
+    const auto msg = create_depth_msg(depth, "rs/depth0", correct_ts);
     depth0_pub_.publish(msg);
   }
 
@@ -277,7 +287,9 @@ struct intel_d435i_node_t {
         const bool enable_ir = rgbd_config_.enable_ir;
         const auto ir0 = fs.get_infrared_frame(1);
         const auto ir1 = fs.get_infrared_frame(2);
-        if (enable_ir && ir0 && ir1) { publish_ir_msgs(ir0, ir1); }
+        if (enable_ir && ir0 && ir1) {
+          publish_ir_msgs(ir0, ir1);
+        }
 
         // Align depth to rgb
         rs2::align align_to_color(RS2_STREAM_COLOR);
@@ -286,12 +298,16 @@ struct intel_d435i_node_t {
         // RGB
         const bool enable_rgb = rgbd_config_.enable_rgb;
         const auto rgb = fs_aligned.get_color_frame();
-        if (enable_rgb && rgb) { publish_rgb0_msg(rgb); }
+        if (enable_rgb && rgb) {
+          publish_rgb0_msg(rgb);
+        }
 
         // Depth image
         const bool enable_depth = rgbd_config_.enable_depth;
         const auto depth = fs_aligned.get_depth_frame();
-        if (enable_depth && depth) { publish_depth0_msg(depth); }
+        if (enable_depth && depth) {
+          publish_depth0_msg(depth);
+        }
       }
     };
 

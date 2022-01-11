@@ -163,6 +163,8 @@ static int failed = 0;
   }
 
 #define OCTAVE_SCRIPT(A)                                                       \
-  if (system("octave " A) != 0) { FATAL("Octave script [%s] failed !", A); }
+  if (system("octave " A) != 0) {                                              \
+    FATAL("Octave script [%s] failed !", A);                                   \
+  }
 
 #endif // MUNIT_HPP

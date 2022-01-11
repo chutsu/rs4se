@@ -40,28 +40,6 @@ int test_ts_correction() {
   return 0;
 }
 
-int test_vframe2ts() {
-  rs2::device device = rs2_connect();
-  rs_rgbd_module_config_t config;
-
-  bool keep_running = true;
-  auto rgbd_cb = [&](const rs2::frame &frame) {
-    if (rs2::frameset fs = frame.as<rs2::frameset>()) {
-      const auto ir_left = fs.get_infrared_frame(1);
-      if (keep_running) { print_rsframe_timestamps(ir_left); }
-      keep_running = false;
-    }
-  };
-  rs_rgbd_module_t rgbd{device, config, rgbd_cb};
-
-  // Block until frame counter threadhold is reached
-  while (keep_running) {
-    sleep(0.1);
-  }
-
-  return 0;
-}
-
 int test_rs2_connect() {
   rs2::device device = rs2_connect();
   const auto fm_ver = device.get_info(RS2_CAMERA_INFO_FIRMWARE_VERSION);
@@ -106,7 +84,9 @@ int test_rs2_motion_module() {
     }
 
     frame_counter++;
-    if (frame_counter >= 10) { keep_running = false; }
+    if (frame_counter >= 10) {
+      keep_running = false;
+    }
   });
 
   // Block until frame counter threadhold is reached
@@ -152,9 +132,35 @@ int test_rs2_rgbd_module() {
       }
 
       frame_counter++;
-      if (frame_counter >= 100) { keep_running = false; }
+      if (frame_counter >= 100) {
+        keep_running = false;
+      }
     }
   });
+
+  // Block until frame counter threadhold is reached
+  while (keep_running) {
+    sleep(0.1);
+  }
+
+  return 0;
+}
+
+int test_vframe2ts() {
+  rs2::device device = rs2_connect();
+  rs_rgbd_module_config_t config;
+
+  bool keep_running = true;
+  auto rgbd_cb = [&](const rs2::frame &frame) {
+    if (rs2::frameset fs = frame.as<rs2::frameset>()) {
+      const auto ir_left = fs.get_infrared_frame(1);
+      if (keep_running) {
+        print_rsframe_timestamps(ir_left);
+      }
+      keep_running = false;
+    }
+  };
+  rs_rgbd_module_t rgbd{device, config, rgbd_cb};
 
   // Block until frame counter threadhold is reached
   while (keep_running) {
@@ -211,7 +217,9 @@ int test_sandbox() {
 
       // User input
       auto key = cv::waitKey(1);
-      if (key == 27 || key == 'q') { keep_running = false; }
+      if (key == 27 || key == 'q') {
+        keep_running = false;
+      }
     }
   });
 
