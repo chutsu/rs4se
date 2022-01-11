@@ -19,6 +19,15 @@
           ##__VA_ARGS__);                                                      \
   exit(-1)
 
+#define LOG_INFO(M, ...) fprintf(stdout, "[INFO] " M "\n", ##__VA_ARGS__)
+
+#define LOG_ERROR(M, ...)                                                      \
+  fprintf(stderr,                                                              \
+          "\033[31m[ERROR] [%s:%d] " M "\033[0m\n",                            \
+          __FILENAME__,                                                        \
+          __LINE__,                                                            \
+          ##__VA_ARGS__)
+
 #define LOG_WARN(M, ...)                                                       \
   fprintf(stdout, "\033[33m[WARN] " M "\033[0m\n", ##__VA_ARGS__)
 
@@ -72,17 +81,49 @@ void print_rsframe_timestamps(const rs2::frame &frame) {
   }
 }
 
+void print_rs_exception(const rs2::error &err) {
+  switch (err.get_type()) {
+  case RS2_EXCEPTION_TYPE_UNKNOWN:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_UNKNOWN Error!");
+    break;
+  case RS2_EXCEPTION_TYPE_CAMERA_DISCONNECTED:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_CAMERA_DISCONNECTED Error!");
+    break;
+  case RS2_EXCEPTION_TYPE_BACKEND:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_BACKEND Error!");
+    break;
+  case RS2_EXCEPTION_TYPE_INVALID_VALUE:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_INVALID_VALUE Error!");
+    break;
+  case RS2_EXCEPTION_TYPE_WRONG_API_CALL_SEQUENCE:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_WRONG_API_CALL_SEQUENCE Error!");
+    break;
+  case RS2_EXCEPTION_TYPE_NOT_IMPLEMENTED:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_NOT_IMPLEMENTED Error!");
+    break;
+  case RS2_EXCEPTION_TYPE_DEVICE_IN_RECOVERY_MODE:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_DEVICE_IN_RECOVERY_MODE Error!");
+    break;
+  case RS2_EXCEPTION_TYPE_IO: LOG_ERROR("RS2_EXCEPTION_TYPE_IO Error!"); break;
+  case RS2_EXCEPTION_TYPE_COUNT:
+    LOG_ERROR("RS2_EXCEPTION_TYPE_COUNT Error!");
+    break;
+  };
+  LOG_ERROR("FAILED AT FUNC  : %s", err.get_failed_function().c_str());
+  LOG_ERROR("FAILED WITH ARGS: %s", err.get_failed_args().c_str());
+  FATAL("[RealSense Exception]: %s", err.what());
+}
+
 static inline uint64_t str2ts(const std::string &s) {
   uint64_t ts = 0;
-  size_t end = s.length() - 1;
-
   int idx = 0;
-  for (int i = 0; i <= end; i++) {
-    const char c = s.at(end - i);
+
+  for (int i = s.length() - 1; i >= 0; i--) {
+    const char c = s[i];
 
     if (c != '.') {
       const uint64_t base = static_cast<uint64_t>(pow(10, idx));
-      ts += std::atoi(&c) * base;
+      ts += (c - '0') * base;
       idx++;
     }
   }
@@ -493,8 +534,10 @@ struct rs_rgbd_module_t {
     }
 
     if (configured_) {
-      pipe_.start(cfg, cb);
-      is_running_ = true;
+      try {
+        pipe_.start(cfg, cb);
+        is_running_ = true;
+      } catch (const rs2::error &err) { print_rs_exception(err); }
     }
   }
 
@@ -510,106 +553,119 @@ struct intel_d435i_t {
   bool is_running_ = false;
   bool configured_ = false;
 
-  const rs2::device &device_;
+  rs2::context ctx_;
+  rs2::device &device_;
   rs2::sensor motion_;
   rs2::sensor rgb_;
   rs2::sensor stereo_;
   rs2::pipeline pipe_;
-  rs_rgbd_module_config_t rgbd_config_;
-  rs_motion_module_config_t motion_config_;
+  rs_rgbd_module_config_t rgbd_conf_;
+  rs_motion_module_config_t motion_conf_;
+  std::function<void(const rs2::frame &frame)> cb_;
 
-  intel_d435i_t(const rs2::device &device,
+  intel_d435i_t(rs2::device &device,
                 const rs_rgbd_module_config_t &rgbd_config,
                 const rs_motion_module_config_t &motion_config,
                 const std::function<void(const rs2::frame &frame)> cb)
-      : device_{device}, rgbd_config_{rgbd_config}, motion_config_{
-                                                        motion_config} {
-    // Configure
-    rs2::config cfg;
-
-    // ------------------------------ Motion -----------------------------------
-    // clang-format off
-    if (motion_config_.enable_motion) {
-      if (rs2_get_sensor(device_, "Motion Module", motion_) != 0) {
-        FATAL("This RealSense device does not have a [Motion Module]");
-      }
-      motion_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, motion_config_.global_time);
-      cfg.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F, motion_config_.accel_hz);
-      cfg.enable_stream(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F, motion_config_.gyro_hz);
-      configured_ = true;
-    }
-    // clang-format on
-
-    // -------------------------------- RGB ------------------------------------
-    // clang-format off
-    if (rgbd_config_.enable_rgb) {
-      if (rs2_get_sensor(device_, "RGB Camera", rgb_) != 0) {
-        FATAL("This RealSense device does not have a [Stereo Module]");
-      }
-      rgb_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, rgbd_config_.global_time);
-			rgb_.set_option(RS2_OPTION_EXPOSURE, rgbd_config_.rgb_exposure);
-			cfg.enable_stream(RS2_STREAM_COLOR,
-                        rgbd_config.rgb_width,
-                        rgbd_config.rgb_height,
-                        rs2_format_convert(rgbd_config.rgb_format),
-                        rgbd_config.rgb_frame_rate);
-      configured_ = true;
-    }
-    // clang-format on
-
-    // ------------------------------- STEREO ----------------------------------
-    // clang-format off
-    if (rgbd_config.enable_ir) {
-      if (rs2_get_sensor(device_, "Stereo Module", stereo_) != 0) {
-        FATAL("This RealSense device does not have a [Stereo Module]");
-      }
-
-      if (rgbd_config_.enable_depth == true && rgbd_config_.enable_emitter == false) {
-        LOG_WARN("IR emitter is not enabled!");
-      }
-      stereo_.set_option(RS2_OPTION_EMITTER_ENABLED, rgbd_config_.enable_emitter);
-      stereo_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, rgbd_config_.global_time);
-			stereo_.set_option(RS2_OPTION_EXPOSURE, rgbd_config_.ir_exposure);
-
-      // IMPORTANT: Indexing for stereo camera starts from 1 not 0.
-      cfg.enable_stream(RS2_STREAM_INFRARED,
-                        1,
-                        rgbd_config.ir_width,
-                        rgbd_config.ir_height,
-                        rs2_format_convert(rgbd_config.ir_format),
-                        rgbd_config.ir_frame_rate);
-      cfg.enable_stream(RS2_STREAM_INFRARED,
-                        2,
-                        rgbd_config.ir_width,
-                        rgbd_config.ir_height,
-                        rs2_format_convert(rgbd_config.ir_format),
-                        rgbd_config.ir_frame_rate);
-      configured_ = true;
-    }
-    // clang-format on
-
-    // ------------------------------- DEPTH -----------------------------------
-    // clang-format off
-    if (rgbd_config.enable_depth) {
-      cfg.enable_stream(RS2_STREAM_DEPTH,
-                        rgbd_config.depth_width,
-                        rgbd_config.depth_height,
-                        rs2_format_convert(rgbd_config.depth_format),
-                        rgbd_config.depth_frame_rate);
-      configured_ = true;
-    }
-    // clang-format on
-
-    if (configured_) {
-      pipe_.start(cfg, cb);
-      is_running_ = true;
-    }
+      : device_{device}, rgbd_conf_{rgbd_config},
+        motion_conf_{motion_config}, cb_{cb} {
+    configure();
   }
 
   ~intel_d435i_t() {
     if (is_running_) {
       pipe_.stop();
       is_running_ = false;
+    }
+  }
+
+  void configure() {
+    // Configure
+    rs2::config cfg;
+
+    // ------------------------------ Motion -----------------------------------
+    // clang-format off
+    if (motion_conf_.enable_motion) {
+      if (rs2_get_sensor(device_, "Motion Module", motion_) != 0) {
+        FATAL("This RealSense device does not have a [Motion Module]");
+      }
+      motion_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, motion_conf_.global_time);
+      cfg.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F, motion_conf_.accel_hz);
+      cfg.enable_stream(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F, motion_conf_.gyro_hz);
+      configured_ = true;
+    }
+    // clang-format on
+
+    // -------------------------------- RGB ------------------------------------
+    // clang-format off
+    if (rgbd_conf_.enable_rgb) {
+      if (rs2_get_sensor(device_, "RGB Camera", rgb_) != 0) {
+        FATAL("This RealSense device does not have a [Stereo Module]");
+      }
+      rgb_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, rgbd_conf_.global_time);
+			rgb_.set_option(RS2_OPTION_EXPOSURE, rgbd_conf_.rgb_exposure);
+			cfg.enable_stream(RS2_STREAM_COLOR,
+                        rgbd_conf_.rgb_width,
+                        rgbd_conf_.rgb_height,
+                        rs2_format_convert(rgbd_conf_.rgb_format),
+                        rgbd_conf_.rgb_frame_rate);
+      configured_ = true;
+    }
+    // clang-format on
+
+    // ------------------------------- STEREO ----------------------------------
+    // clang-format off
+    if (rgbd_conf_.enable_ir) {
+      if (rs2_get_sensor(device_, "Stereo Module", stereo_) != 0) {
+        FATAL("This RealSense device does not have a [Stereo Module]");
+      }
+
+      if (rgbd_conf_.enable_depth == true && rgbd_conf_.enable_emitter == false) {
+        LOG_WARN("IR emitter is not enabled!");
+      }
+			stereo_.set_option(RS2_OPTION_EXPOSURE, rgbd_conf_.ir_exposure);
+      stereo_.set_option(RS2_OPTION_EMITTER_ENABLED, rgbd_conf_.enable_emitter);
+      stereo_.set_option(RS2_OPTION_GLOBAL_TIME_ENABLED, rgbd_conf_.global_time);
+
+      // IMPORTANT: Indexing for stereo camera starts from 1 not 0.
+      cfg.enable_stream(RS2_STREAM_INFRARED,
+                        1,
+                        rgbd_conf_.ir_width,
+                        rgbd_conf_.ir_height,
+                        rs2_format_convert(rgbd_conf_.ir_format),
+                        rgbd_conf_.ir_frame_rate);
+      cfg.enable_stream(RS2_STREAM_INFRARED,
+                        2,
+                        rgbd_conf_.ir_width,
+                        rgbd_conf_.ir_height,
+                        rs2_format_convert(rgbd_conf_.ir_format),
+                        rgbd_conf_.ir_frame_rate);
+      configured_ = true;
+    }
+    // clang-format on
+
+    // ------------------------------- DEPTH -----------------------------------
+    // clang-format off
+    if (rgbd_conf_.enable_depth) {
+      cfg.enable_stream(RS2_STREAM_DEPTH,
+                        rgbd_conf_.depth_width,
+                        rgbd_conf_.depth_height,
+                        rs2_format_convert(rgbd_conf_.depth_format),
+                        rgbd_conf_.depth_frame_rate);
+      configured_ = true;
+    }
+    // clang-format on
+
+    // Check if device is still connected
+    ctx_.set_devices_changed_callback([&](rs2::event_information &info) {
+      if (info.was_removed(device_)) { FATAL("Lost connection to sensor!"); }
+    });
+
+    // Start streaming
+    if (configured_) {
+      LOG_INFO("Start streaming!");
+      pipe_.start(cfg, cb_);
+      is_running_ = true;
     }
   }
 };
