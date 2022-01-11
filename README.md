@@ -24,38 +24,62 @@ In particular this driver makes the following assertions:
 
 ## Install
 
-This project depends on [librealsense2][librealsense2]. Additionally, make sure
-you patch your OS kernel following the prerequisit instructions detailed
-[here][install_prerequisit]. Then build `rs4se` with the following commands:
+Go to your catkin workspace and clone this repo:
 
-    cd <PATH TO YOUR CATKIN WS>/src
-    git clone https://github.com/chutsu/rs4se
-    catkin build
+```
+cd <your catkin workspace>
+git clone git@github.com:chutsu/rs4se.git
+cd rs4se
+```
 
+Install [librealsense2][librealsense2]. Additionally, make sure you patch your
+OS kernel following the prerequisit instructions detailed
+[here][install_prerequisit]. There are two make targets to do this for you:
+
+```
+make deps
+make patch_kernel
+```
+
+**IMPORTANT NOTE**: For correct mid-exposure timestamping to work you must
+patch the kernel or this driver will fail to obtain the
+`RS2_FRAME_METADATA_SENSOR_TIMESTAMP` meta data from the sensor.
+
+Then build `rs4se` with the following commands:
+
+```
+catkin build
+```
 
 ## Run
 
-    source <PATH TO YOUR CATKIN WS>/devel/setup.bash
-    roslaunch rs4se intel_d435i.launch
+```
+source <PATH TO YOUR CATKIN WS>/devel/setup.bash
+roslaunch rs4se intel_d435i.launch
+```
 
 The above launch file will launch the `intel_d435i` ros node and publish the
 following topics:
 
-    /rs/rgb0/image     # RGB camera frames
-    /rs/ir0/image      # Infrared camera (left) frames
-    /rs/ir1/image      # Infrared camera (right) frames
-    /rs/depth0/image   # Depth image (if enabled) aligned to /rs/rgb0/image
-    /rs/imu0/data      # "Synchronized" accel and gyro data via lerp
-    /rs/accel0/data    # Accelerometer measurements
-    /rs/gyro0/data     # Gyroscope measurements
+```
+/rs/rgb0/image     # RGB camera frames
+/rs/ir0/image      # Infrared camera (left) frames
+/rs/ir1/image      # Infrared camera (right) frames
+/rs/depth0/image   # Depth image (if enabled) aligned to /rs/rgb0/image
+/rs/imu0/data      # "Synchronized" accel and gyro data via lerp
+/rs/accel0/data    # Accelerometer measurements
+/rs/gyro0/data     # Gyroscope measurements
+```
 
 
 ## Troubleshoot
 
 **UVC header is not available**
 
-    terminate called after throwing an instance of 'rs2::invalid_value_error'
-      what():  UVC header is not available
+```
+terminate called after throwing an instance of 'rs2::invalid_value_error'
+  what():  UVC header is not available
+```
 
 Solution: [here](https://github.com/chutsu/rs4se/issues/3#issuecomment-530434550)
 
