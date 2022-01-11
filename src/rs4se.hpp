@@ -124,6 +124,8 @@ static inline uint64_t str2ts(const std::string &s) {
     if (c != '.') {
       const uint64_t base = static_cast<uint64_t>(pow(10, idx));
       ts += (c - '0') * base;
+      //    ^ Convert ascii to integer
+      // Note: character '0' has the ASCII code of 48
       idx++;
     }
   }
