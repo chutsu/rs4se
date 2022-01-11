@@ -315,12 +315,8 @@ int main(int argc, char **argv) {
   }
 
   // Start ROS node
-  try {
-    intel_d435i_node_t node(node_name);
-    node.stream();
-  } catch (const rs2::error &e) {
-    FATAL("[RealSense Exception]: %s", e.what());
-  }
+  intel_d435i_node_t node(node_name);
+  node.stream();
 
   return 0;
 }
