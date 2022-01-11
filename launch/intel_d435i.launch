@@ -6,7 +6,7 @@
       required="true"
       output="screen">
     <param name="global_time" type="bool" value="true" />
-    <param name="correct_ts" type="bool" value="false" />
+    <param name="correct_ts" type="bool" value="true" />
 
     <!-- RGBD -->
     <param name="enable_rgb" type="bool" value="true" />
