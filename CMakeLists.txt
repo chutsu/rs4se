@@ -1,17 +1,17 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 PROJECT(rs4se)
 
-ADD_COMPILE_OPTIONS(
-  -Wall
-  -Wextra
-  -fsanitize=address
-  -fno-omit-frame-pointer
-)
-
-LINK_LIBRARIES(
-  -fsanitize=address
-  -static-libasan # Use -static-libsan for Clang
-)
+# ADD_COMPILE_OPTIONS(
+#   -Wall
+#   -Wextra
+#   -fsanitize=address
+#   -fno-omit-frame-pointer
+# )
+#
+# LINK_LIBRARIES(
+#   -fsanitize=address
+#   -static-libasan # Use -static-libsan for Clang
+# )
 
 # PACKAGES
 FIND_PACKAGE(OpenCV REQUIRED)
