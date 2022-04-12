@@ -28,3 +28,5 @@ octave-workspace
 .ropeproject
 
 *.pyc
+
+librealsense

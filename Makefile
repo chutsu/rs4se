@@ -20,8 +20,8 @@ build: ## Build rs4se
 	@cd ${CATKIN_WS}/src && ln -sf ${PROJ_PATH} . \
 		&& . /opt/ros/melodic/setup.sh && cd .. && catkin build
 
-/usr/local/src/librealsense:
+librealsense:
 	@git clone git@github.com:IntelRealSense/librealsense.git
 
-patch_kernel: /usr/local/src/librealsense ## Patch kernel to enable meta data
-	@cd /usr/local/src/librealsense && ./scripts/patch-realsense-ubuntu-lts.sh
+patch_kernel: librealsense ## Patch kernel to enable meta data
+	@cd librealsense && ./scripts/patch-realsense-ubuntu-lts.sh
