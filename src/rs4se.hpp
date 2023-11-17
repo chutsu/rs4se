@@ -489,6 +489,16 @@ struct rs_rgbd_module_t {
                    const rs_rgbd_module_config_t &config,
                    const std::function<void(const rs2::frame &frame)> cb)
       : device_{device}, config_{config} {
+    // Print device basic info
+    // clang-format off
+    printf("SDK version: %s\n", RS2_API_FULL_VERSION_STR);
+    printf("Device Name:      %s\n", device.get_info(RS2_CAMERA_INFO_NAME));
+    printf("Serial Number:    %s\n", device.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER));
+    printf("Firmware Version: %s\n", device.get_info(RS2_CAMERA_INFO_FIRMWARE_VERSION));
+    printf("Physical Port:    %s\n", device.get_info(RS2_CAMERA_INFO_PHYSICAL_PORT));
+    fflush(stdout);
+    // clang-format on
+
     // Connect to stereo module
     // clang-format off
     {
