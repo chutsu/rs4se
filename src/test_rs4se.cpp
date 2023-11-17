@@ -146,6 +146,80 @@ int test_rs2_rgbd_module() {
   return 0;
 }
 
+int test_rs2_rgbd_motion_module() {
+  const rs2::device device = rs2_connect();
+  rs_rgbd_module_config_t rgbd_config;
+  rs_motion_module_config_t imu_config;
+
+  bool keep_running = true;
+  int frame_counter = 0;
+  rs_rgbd_module_t rgbd(device, rgbd_config, [&](const rs2::frame &frame) {
+    if (rs2::frameset fs = frame.as<rs2::frameset>()) {
+      // Show rgbd ir image
+      const auto ir_left = fs.get_infrared_frame(1);
+      const auto ir_right = fs.get_infrared_frame(2);
+      const int width = ir_left.get_width();
+      const int height = ir_left.get_height();
+      cv::Mat frame_left = frame2cvmat(ir_left, width, height, CV_8UC1);
+      cv::Mat frame_right = frame2cvmat(ir_right, width, height, CV_8UC1);
+      debug_imshow(frame_left, frame_right);
+
+      const auto rgb = fs.get_color_frame();
+      if (rgbd_config.enable_rgb && rgb) {
+        const int width = rgb.get_width();
+        const int height = rgb.get_height();
+        cv::Mat cv_frame = frame2cvmat(rgb, width, height, CV_8UC3);
+        cv::imshow("RGB", cv_frame);
+        cv::waitKey(1);
+      }
+
+      // Show depth image
+      if (rgbd_config.enable_depth) {
+        const auto depth_frame = fs.get_depth_frame();
+        cv::Mat depth = frame2cvmat(depth_frame, width, height, CV_16UC1);
+        cv::imshow("Depth", depth);
+        cv::waitKey(1);
+      }
+
+      frame_counter++;
+      // if (frame_counter >= 100) {
+      //   keep_running = false;
+      // }
+    }
+  });
+
+  bool imu_keep_running = true;
+  int imu_frame_counter = 0;
+  rs_motion_module_t motion(device, imu_config, [&](const rs2::frame &frame) {
+    auto motion = frame.as<rs2::motion_frame>();
+    if (motion && motion.get_profile().stream_type() == RS2_STREAM_GYRO &&
+        motion.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F) {
+      // double ts = motion.get_timestamp();
+      rs2_vector gyro_data = motion.get_motion_data();
+      // std::cout << "G\t" << gyro_data << std::endl;
+    }
+
+    if (motion && motion.get_profile().stream_type() == RS2_STREAM_ACCEL &&
+        motion.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F) {
+      // double ts = motion.get_timestamp();
+      rs2_vector accel_data = motion.get_motion_data();
+      // std::cout << "A\t" << accel_data << std::endl;
+    }
+
+    imu_frame_counter++;
+    // if (imu_frame_counter >= 10) {
+    //   imu_keep_running = false;
+    // }
+  });
+
+  // Block until frame counter threadhold is reached
+  while (keep_running) {
+    sleep(0.1);
+  }
+
+  return 0;
+}
+
 int test_vframe2ts() {
   rs2::device device = rs2_connect();
   rs_rgbd_module_config_t config;
@@ -240,6 +314,7 @@ void test_suite() {
   MU_ADD_TEST(test_rs2_get_sensor);
   MU_ADD_TEST(test_rs2_motion_module);
   MU_ADD_TEST(test_rs2_rgbd_module);
+  MU_ADD_TEST(test_rs2_rgbd_motion_module);
   // MU_ADD_TEST(test_sandbox);
 }
 
