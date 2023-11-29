@@ -1,7 +1,7 @@
 # rs4se
 
 <a href="https://github.com/chutsu/rs4se/actions?query=ci">
-  <img src="https://github.com/chutsu/rs4se/workflows/ci/badge.svg">
+  <img src="https://github.com/chutsu/rs4se/actions/workflows/ccpp.yml/badge.svg">
 </a>
 
 *rs4se* stands for *RealSense for State Estimation*. The goal is to wrap around
